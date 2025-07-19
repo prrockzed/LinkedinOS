@@ -278,8 +278,8 @@ def main():
     sheet.clear()
     
     # Updated headers with new columns
-    headers = ["Company Name", "Founder Name", "LinkedIn URL", "Company LinkedIn", 
-               "Company URL", "About Company", "Website", "Team Size", "Founding Year"]
+    headers = ["Company Name", "Founders' Name", "Founders' LinkedIn URL", "Company's LinkedIn URL", 
+               "Company's YC URL", "About Company", "Company's Website", "Team Size", "Founding Year"]
     sheet.append_row(headers)
     
     yc_links = get_yc_2025_links()

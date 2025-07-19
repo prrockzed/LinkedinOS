@@ -63,71 +63,52 @@ def is_valid_linkedin_profile(url):
     
     return False
 
-def extract_founder_name_from_yc_page(soup, linkedin_url):
-    """Extract founder name from YC website content"""
-    # Try to find name near LinkedIn links
-    all_links = soup.find_all("a", href=True)
-    for link in all_links:
-        if linkedin_url in link.get("href", ""):
-            # Look for name in nearby elements
-            parent = link.parent
-            if parent:
-                # Check siblings and parent text
-                siblings = parent.find_all(text=True)
-                for sibling in siblings:
-                    text = sibling.strip()
-                    if text and len(text) > 1 and not any(x in text.lower() for x in ['linkedin', 'http', 'www', 'profile']):
-                        # Check if it looks like a name (contains letters and possibly spaces)
-                        if re.match(r'^[A-Za-z\s\-\.]+$', text) and len(text) < 50:
-                            return text
-            
-            # Check previous and next siblings of the link
-            if link.previous_sibling:
-                prev_text = str(link.previous_sibling).strip()
-                if prev_text and len(prev_text) > 1 and re.match(r'^[A-Za-z\s\-\.]+$', prev_text) and len(prev_text) < 50:
-                    return prev_text
-            
-            if link.next_sibling:
-                next_text = str(link.next_sibling).strip()
-                if next_text and len(next_text) > 1 and re.match(r'^[A-Za-z\s\-\.]+$', next_text) and len(next_text) < 50:
-                    return next_text
+def extract_founders_info(soup):
+    """Extract founders information from the company page"""
+    founders = []
     
-    # Fallback: try to extract from common patterns around founder sections
-    founder_sections = soup.find_all(['h2', 'h3', 'h4', 'div', 'span'], string=re.compile(r'founder|team|people', re.IGNORECASE))
+    # Find all founder sections (divs with min-w-0 flex-1 class)
+    founder_sections = soup.find_all('div', class_='min-w-0 flex-1')
+    
     for section in founder_sections:
-        next_elements = section.find_next_siblings()
-        for element in next_elements[:3]:  # Check next 3 siblings
-            if element and element.find("a", href=lambda x: x and linkedin_url in x):
-                text_content = element.get_text().strip()
-                # Extract potential names using regex
-                names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', text_content)
-                for name in names:
-                    if len(name) > 2 and len(name) < 50:
-                        return name
+        # Extract founder name from text-xl font-bold div
+        name_element = section.find('div', class_='text-xl font-bold')
+        if not name_element:
+            continue
+            
+        founder_name = name_element.get_text(strip=True)
+        
+        # Find LinkedIn URL in this section
+        linkedin_url = None
+        social_links = section.find_all('a', href=True)
+        for link in social_links:
+            href = link.get('href', '')
+            if is_valid_linkedin_profile(href):
+                linkedin_url = href
+                break
+        
+        if founder_name and linkedin_url:
+            founders.append({
+                'name': founder_name,
+                'linkedin_url': linkedin_url
+            })
     
-    # Final fallback: look for any text that looks like a name near the LinkedIn URL
-    page_text = soup.get_text()
-    if linkedin_url in page_text:
-        # Try to find names in the vicinity of the LinkedIn URL
-        linkedin_index = page_text.find(linkedin_url)
-        if linkedin_index != -1:
-            # Look 200 characters before and after the LinkedIn URL
-            context = page_text[max(0, linkedin_index - 200):linkedin_index + 200]
-            names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b', context)
-            for name in names:
-                if len(name) > 2 and len(name) < 50 and not any(x in name.lower() for x in ['linkedin', 'http', 'www', 'profile', 'company']):
-                    return name
-    
-    return "Unknown"
+    return founders
 
 def extract_company_details(soup):
     """Extract additional company details from YC website"""
     details = {
+        'name': '',
         'about': '',
         'website': '',
         'team_size': '',
         'founding_year': ''
     }
+    
+    # Extract company name
+    name_element = soup.find('h1')
+    if name_element:
+        details['name'] = name_element.get_text(strip=True).replace(" | Y Combinator", "")
     
     # Extract company description/about
     about_selectors = [
@@ -198,6 +179,15 @@ def extract_company_details(soup):
     
     return details
 
+def extract_company_linkedin(soup):
+    """Extract company LinkedIn URL"""
+    links = soup.find_all('a', href=True)
+    for link in links:
+        href = link.get('href', '').lower()
+        if 'linkedin.com/company/' in href:
+            return link.get('href')
+    return ''
+
 def extract_founders(company_url):
     print(f"Extracting from: {company_url}")
     
@@ -210,61 +200,32 @@ def extract_founders(company_url):
     
     soup = BeautifulSoup(response.text, "html.parser")
     
-    try:
-        # Try multiple selectors for company name
-        name_element = soup.find("h1")
-        if not name_element:
-            name_element = soup.find("title")
-        
-        company_name = name_element.text.strip() if name_element else "Unknown"
-        # Clean up company name
-        company_name = company_name.replace(" | Y Combinator", "").strip()
-    except:
-        company_name = "Unknown"
-
-    # Extract company details (about, website, team size, founding year)
+    # Extract company details
     company_details = extract_company_details(soup)
+    company_linkedin = extract_company_linkedin(soup)
     
-    # Extract company LinkedIn URL
-    company_linkedin = ""
-    links = soup.find_all("a", href=True)
-    for link in links:
-        href = link.get("href", "").lower()
-        if "linkedin.com/company/" in href:
-            company_linkedin = link.get("href")
-            break
-
-    # Find all LinkedIn profile links
-    people_section = soup.find_all("a", href=True)
+    # Extract founders information
+    founders_info = extract_founders_info(soup)
+    
+    if not founders_info:
+        return None
+    
+    # Prepare founders data
     founders_data = []
-
-    for link in people_section:
-        href = link.get("href")
-        if href and is_valid_linkedin_profile(href):
-            # Extract founder name from YC website content
-            founder_name = extract_founder_name_from_yc_page(soup, href)
-            founders_data.append({
-                'company_name': company_name,
-                'founder_name': founder_name,
-                'linkedin_url': href,
-                'company_linkedin': company_linkedin,
-                'company_url': company_url,
-                'about': company_details['about'],
-                'website': company_details['website'],
-                'team_size': company_details['team_size'],
-                'founding_year': company_details['founding_year']
-            })
-
-    # Remove duplicates based on LinkedIn URL
-    unique_founders = []
-    seen_urls = set()
+    for founder in founders_info:
+        founders_data.append({
+            'company_name': company_details['name'],
+            'founder_name': founder['name'],
+            'linkedin_url': founder['linkedin_url'],
+            'company_linkedin': company_linkedin,
+            'company_url': company_url,
+            'about': company_details['about'],
+            'website': company_details['website'],
+            'team_size': company_details['team_size'],
+            'founding_year': company_details['founding_year']
+        })
     
-    for founder in founders_data:
-        if founder['linkedin_url'] not in seen_urls:
-            unique_founders.append(founder)
-            seen_urls.add(founder['linkedin_url'])
-
-    return unique_founders if unique_founders else None
+    return founders_data
 
 def format_data_for_sheet(all_founders_data):
     """Format data according to requirements: group by company, show company info only once"""

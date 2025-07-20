@@ -132,18 +132,26 @@ def extract_company_details(soup):
         if meta_desc:
             details['about'] = meta_desc.get('content', '').strip()
     
-    # Extract website - look for external links
-    all_links = soup.find_all('a', href=True)
-    for link in all_links:
-        href = link.get('href', '').lower()
-        if (href.startswith('http') and 
-            'ycombinator.com' not in href and 
-            'linkedin.com' not in href and
-            'twitter.com' not in href and
-            'github.com' not in href):
-            # This is likely the company website
-            details['website'] = link.get('href')
-            break
+    # Extract website - look for specific pattern with link icon
+    website_element = soup.find('a', class_='mb-2 whitespace-nowrap md:mb-0')
+    if website_element and website_element.find('svg') and 'href' in website_element.attrs:
+        details['website'] = website_element['href']
+    
+    # If not found with specific class, try alternative approach
+    if not details['website']:
+        all_links = soup.find_all('a', href=True)
+        for link in all_links:
+            href = link.get('href', '').lower()
+            if (href.startswith('http') and 
+                'ycombinator.com' not in href and 
+                'linkedin.com' not in href and
+                'twitter.com' not in href and
+                'github.com' not in href and
+                'facebook.com' not in href and
+                'startupschool.org' not in href):
+                # This is likely the company website
+                details['website'] = link.get('href')
+                break
     
     # Extract team size - look for patterns like "Team size: X" or "X employees"
     page_text = soup.get_text()

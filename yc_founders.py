@@ -1,5 +1,6 @@
+import os
 import time
-import json
+from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -9,15 +10,12 @@ from oauth2client.service_account import ServiceAccountCredentials
 import re
 
 
-# Google Sheet setup
-SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1LarZd_WShGMbrNk2znA9ZjTKksp8nE6223Vudo9p0Qw/edit?gid=5128251#gid=5128251'
-SPREADSHEET_ID = SPREADSHEET_URL.split('/')[5]
-
-def setup_gsheet():
+def setup_gsheet(spreadsheet_url):
+    spreadsheet_id = spreadsheet_url.split('/')[5]
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
     client = gspread.authorize(creds)
-    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+    sheet = client.open_by_key(spreadsheet_id).sheet1
     return sheet
 
 def setup_driver():
@@ -29,14 +27,13 @@ def setup_driver():
     driver = webdriver.Chrome(options=options)
     return driver
 
-def get_yc_2025_links():
-    url = "https://www.ycombinator.com/companies?batch=Summer%202025"
+def get_yc_2025_links(y_combinator_url, y_combinator_batch):
     driver = setup_driver()
-    driver.get(url)
+    driver.get(y_combinator_batch)
     time.sleep(3)
     soup = BeautifulSoup(driver.page_source, "html.parser")
     links = soup.find_all("a", href=True)
-    company_links = ["https://www.ycombinator.com" + l["href"] for l in links if l["href"].startswith("/companies/")]
+    company_links = [y_combinator_url + l["href"] for l in links if l["href"].startswith("/companies/")]
     driver.quit()
     return list(set(company_links))
 
@@ -280,9 +277,22 @@ def format_data_for_sheet(all_founders_data):
     return formatted_rows
 
 def main():
-    print("Starting YC company scraping...")
+    load_dotenv()
     
-    sheet = setup_gsheet()
+    spreadsheet_url = os.getenv("SPREADSHEET_URL")
+    y_combinator_url = os.getenv("Y_COMBINATOR_URL")
+    y_combinator_batch = os.getenv("Y_COMBINATOR_BATCH")
+    
+    if not spreadsheet_url:
+        print("Error: Google Sheet URL not found in .env file.")
+        print("Please ensure SPREADSHEET_URL is set in the .env file!")
+        return
+
+    print(f"Using Google Sheet URL from .env: {spreadsheet_url}\n")
+    
+    print("\nStarting YC company scraping...")
+    
+    sheet = setup_gsheet(spreadsheet_url=spreadsheet_url)
     sheet.clear()
     
     # Updated headers with new columns
@@ -290,7 +300,7 @@ def main():
                "Company's YC URL", "About Company", "Company's Website", "Team Size", "Founding Year"]
     sheet.append_row(headers)
     
-    yc_links = get_yc_2025_links()
+    yc_links = get_yc_2025_links(y_combinator_url=y_combinator_url, y_combinator_batch=y_combinator_batch)
     print(f"Found {len(yc_links)} company links")
     
     all_founders_data = []

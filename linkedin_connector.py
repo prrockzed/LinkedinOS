@@ -15,15 +15,13 @@ from selenium.common.exceptions import (
     TimeoutException,
 )
 
-# Google Sheet setup
-SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1LarZd_WShGMbrNk2znA9ZjTKksp8nE6223Vudo9p0Qw/edit?gid=5128251#gid=5128251'
-SPREADSHEET_ID = SPREADSHEET_URL.split('/')[5]
 
-def setup_gsheet():
+def setup_gsheet(spreadsheet_url):
+    spreadsheet_id = spreadsheet_url.split('/')[5]
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
     client = gspread.authorize(creds)
-    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+    sheet = client.open_by_key(spreadsheet_id).sheet1
     return sheet
 
 def setup_driver():
@@ -77,14 +75,14 @@ def login_to_linkedin(driver, email, password):
         print(f"Login failed: {e}")
         return False
 
-def send_connection(driver):
+def send_connection_request(driver):
     # Try both variants of Connect button
     connect_button = None
     
     # Variant 1: Handle potential "More" button dropdown first
     try:
         # First check if there's a "More" button
-        more_button = WebDriverWait(driver, 5).until(
+        more_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH,
                 "//button[contains(@class, 'artdeco-dropdown__trigger') and .//span[text()='More']]"))
         )
@@ -98,7 +96,7 @@ def send_connection(driver):
         
         # Now look for Connect button in dropdown
         try:
-            connect_button = WebDriverWait(driver, 5).until(
+            connect_button = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH,
                     "//div[contains(@class, 'artdeco-dropdown__content')]//span[contains(@class, 'display-flex') and contains(@class, 't-normal') and contains(@class, 'flex-1') and text()='Connect']"))
             )
@@ -110,7 +108,7 @@ def send_connection(driver):
     except TimeoutException:
         # If no More button, proceed with normal Connect button check
         try:
-            connect_button = WebDriverWait(driver, 5).until(
+            connect_button = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH,
                     "//span[contains(@class, 'display-flex') and contains(@class, 't-normal') and contains(@class, 'flex-1') and text()='Connect']"))
             )
@@ -122,7 +120,7 @@ def send_connection(driver):
     # Variant 2: <span class="artdeco-button__text">Connect</span> (with parent class check)
     if not connect_button:
         try:
-            connect_span = WebDriverWait(driver, 5).until(
+            connect_span = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.XPATH,
                     "//span[contains(@class, 'artdeco-button__text') and text()='Connect']"))
             )
@@ -155,7 +153,7 @@ def send_connection(driver):
         
         # Handle Send without note if appears
         try:
-            send_button = WebDriverWait(driver, 5).until(
+            send_button = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH,
                     "//span[text()='Send without a note']/ancestor::button[contains(@class, 'artdeco-button')]"))
             )
@@ -176,13 +174,19 @@ def process_profiles():
     
     linkedin_email = os.getenv("LINKEDIN_EMAIL")
     linkedin_password = os.getenv("LINKEDIN_PASSWORD")
+    spreadsheet_url = os.getenv("SPREADSHEET_URL")
 
     if not linkedin_email or not linkedin_password:
         print("Error: LinkedIn email or password not found in .env file.")
-        print("Please ensure LINKEDIN_EMAIL and LINKEDIN_PASSWORD are set.")
+        print("Please ensure LINKEDIN_EMAIL and LINKEDIN_PASSWORD are set in the .env file!")
+        return
+    if not spreadsheet_url:
+        print("Error: Google Sheet URL not found in .env file.")
+        print("Please ensure SPREADSHEET_URL is set in the .env file!")
         return
 
-    print(f"\nUsing LinkedIn email from .env: {linkedin_email}\n")
+    print(f"\nUsing LinkedIn email from .env: {linkedin_email}")
+    print(f"Using Google Sheet URL from .env: {spreadsheet_url}\n")
     
     # Setup browser and login
     driver = setup_driver()
@@ -192,7 +196,7 @@ def process_profiles():
         return
     
     # Get profiles from Google Sheet
-    sheet = setup_gsheet()
+    sheet = setup_gsheet(spreadsheet_url=spreadsheet_url)
     records = sheet.get_all_records()
     
     # Process each profile
@@ -208,13 +212,13 @@ def process_profiles():
         
         try:
             driver.get(linkedin_url)
-            time.sleep(3)
+            time.sleep(5)
             
             # Scroll to ensure Connect button is visible
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight/3);")
             time.sleep(1)
             
-            if not send_connection(driver):
+            if not send_connection_request(driver):
                 print(f"⚠️ Failed to connect with {linkedin_url.split('/')[-1]}")
                 
             # Add delay to avoid rate limiting
@@ -225,10 +229,10 @@ def process_profiles():
             break
         except Exception as e:
             print(f"Error processing {linkedin_url}: {e}")
-            time.sleep(30)
+            time.sleep(20)
     
     driver.quit()
-    print("\n\nProcessing completed!")
+    print("\n\n✅ Done and Dusted. Connection campaign completed!! Go and have some fun")
 
 if __name__ == "__main__":
     process_profiles()

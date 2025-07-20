@@ -1,4 +1,7 @@
+import os
 import time
+import random
+from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from selenium import webdriver
@@ -10,7 +13,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     NoSuchElementException, 
     TimeoutException,
-    ElementClickInterceptedException
 )
 
 # Google Sheet setup
@@ -75,84 +77,112 @@ def login_to_linkedin(driver, email, password):
         print(f"Login failed: {e}")
         return False
 
-def is_already_connected(driver, profile_url):
-    """Check if already connected or request pending"""
-    driver.get(profile_url)
-    time.sleep(3)  # Wait for page to load
+def send_connection(driver):
+    # Try both variants of Connect button
+    connect_button = None
     
+    # Variant 1: Handle potential "More" button dropdown first
     try:
-        # Check for "Pending" button (request already sent)
-        pending_button = driver.find_element(By.XPATH, "//span[text()='Pending']")
-        if pending_button:
-            print("Connection request already pending")
-            return True
-    except NoSuchElementException:
-        pass
-    
-    try:
-        # Check for "Message" button (already connected)
-        message_button = driver.find_element(By.XPATH, "//span[text()='Message']")
-        if message_button:
-            print("Already connected")
-            return True
-    except NoSuchElementException:
-        pass
-    
-    return False
-
-def send_connection_request(driver, profile_url):
-    """Send LinkedIn connection request"""
-    driver.get(profile_url)
-    time.sleep(3)  # Wait for page to load
-    
-    try:
-        # Find and click the "Connect" button
-        connect_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//span[text()='Connect']"))
+        # First check if there's a "More" button
+        more_button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH,
+                "//button[contains(@class, 'artdeco-dropdown__trigger') and .//span[text()='More']]"))
         )
-        connect_button.click()
         
-        # Handle possible "Add a note" modal
+        # Click the More button to expand dropdown
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", more_button)
+        time.sleep(0.5)
+        driver.execute_script("arguments[0].click();", more_button)
+        print("🔘 More button clicked to expand menu")
+        time.sleep(1)  # Wait for dropdown to appear
+        
+        # Now look for Connect button in dropdown
         try:
-            # Wait for the modal to appear (timeout quickly if it doesn't)
-            WebDriverWait(driver, 2).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "artdeco-modal"))
+            connect_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH,
+                    "//div[contains(@class, 'artdeco-dropdown__content')]//span[contains(@class, 'display-flex') and contains(@class, 't-normal') and contains(@class, 'flex-1') and text()='Connect']"))
+            )
+            print("Found Connect button in More dropdown")
+        except TimeoutException:
+            print("No Connect button found in More dropdown")
+            return False
+            
+    except TimeoutException:
+        # If no More button, proceed with normal Connect button check
+        try:
+            connect_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH,
+                    "//span[contains(@class, 'display-flex') and contains(@class, 't-normal') and contains(@class, 'flex-1') and text()='Connect']"))
+            )
+            print("Found standard Connect button (no More menu needed)")
+        except TimeoutException:
+            print("No standard Connect button found")
+            pass
+    
+    # Variant 2: <span class="artdeco-button__text">Connect</span> (with parent class check)
+    if not connect_button:
+        try:
+            connect_span = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.XPATH,
+                    "//span[contains(@class, 'artdeco-button__text') and text()='Connect']"))
             )
             
-            # Click "Send without a note" if available
-            try:
-                send_without_note = driver.find_element(By.XPATH, "//span[text()='Send without a note']")
-                send_without_note.click()
-                print("Sent connection request without note")
-            except NoSuchElementException:
-                # If no "Send without note" option, just click Send
-                send_button = driver.find_element(By.XPATH, "//span[text()='Send']")
-                send_button.click()
-                print("Sent connection request with note")
-        except TimeoutException:
-            # No modal appeared, request sent directly
-            print("Sent connection request directly")
-        
-        return True
-        
-    except (NoSuchElementException, TimeoutException, ElementClickInterceptedException) as e:
-        # Check if connection requires email (protected profile)
-        try:
-            email_required = driver.find_element(By.XPATH, "//h2[contains(text(), 'Enter their email address')]")
-            if email_required:
-                print("Cannot send request - email required")
+            # Get the parent button element
+            parent_button = connect_span.find_element(By.XPATH, "./..")
+            
+            # Verify parent has required classes
+            parent_classes = parent_button.get_attribute("class").split()
+            required_classes = {"artdeco-button", "artdeco-button--2", "artdeco-button--primary", "ember-view"}
+            
+            if not all(cls in parent_classes for cls in required_classes):
+                print("⚠️ Connect button parent doesn't have required classes - skipping")
                 return False
+                
+            connect_button = parent_button
+                
+        except TimeoutException:
+            print("⚠️ No connect button found")
+            return False
         except NoSuchElementException:
-            pass
+            print("⚠️ Couldn't verify parent element - skipping")
+            return False
+
+    try:
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", connect_button)
+        time.sleep(0.5)
+        driver.execute_script("arguments[0].click();", connect_button)
+        print("🔘 Connect button clicked")
         
-        print(f"Failed to send connection request: {e}")
+        # Handle Send without note if appears
+        try:
+            send_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH,
+                    "//span[text()='Send without a note']/ancestor::button[contains(@class, 'artdeco-button')]"))
+            )
+            driver.execute_script("arguments[0].click();", send_button)
+            print("✅ Connection sent (without note)")
+            return True
+        except TimeoutException:
+            print("ℹ️ No 'Send without note' dialog appeared")
+            return True
+            
+    except Exception as e:
+        print(f"❌ Error sending connection: {str(e)}")
         return False
 
+
 def process_profiles():
-    # Load LinkedIn credentials from environment or input
-    import getpass
-    linkedin_email = input("Enter your LinkedIn email: ")
-    linkedin_password = getpass.getpass("Enter your LinkedIn password: ")
+    load_dotenv()
+    
+    linkedin_email = os.getenv("LINKEDIN_EMAIL")
+    linkedin_password = os.getenv("LINKEDIN_PASSWORD")
+
+    if not linkedin_email or not linkedin_password:
+        print("Error: LinkedIn email or password not found in .env file.")
+        print("Please ensure LINKEDIN_EMAIL and LINKEDIN_PASSWORD are set.")
+        return
+
+    print(f"\nUsing LinkedIn email from .env: {linkedin_email}\n")
     
     # Setup browser and login
     driver = setup_driver()
@@ -167,6 +197,8 @@ def process_profiles():
     
     # Process each profile
     for i, record in enumerate(records, 1):
+        delay_time = random.randint(0, 6)
+
         linkedin_url = record.get("Founders' LinkedIn URL", "").strip()
         if not linkedin_url:
             print(f"Skipping row {i} - no LinkedIn URL")
@@ -175,25 +207,28 @@ def process_profiles():
         print(f"\nProcessing {i}/{len(records)}: {linkedin_url}")
         
         try:
-            # Check if already connected
-            if is_already_connected(driver, linkedin_url):
-                continue
-                
-            # Send connection request
-            if send_connection_request(driver, linkedin_url):
-                # Mark as sent in the sheet (add a new column if needed)
-                # You can implement this if you want to track sent requests
-                pass
+            driver.get(linkedin_url)
+            time.sleep(3)
+            
+            # Scroll to ensure Connect button is visible
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight/3);")
+            time.sleep(1)
+            
+            if not send_connection(driver):
+                print(f"⚠️ Failed to connect with {linkedin_url.split('/')[-1]}")
                 
             # Add delay to avoid rate limiting
-            time.sleep(10 + i % 5)  # Randomize delay between 10-15 seconds
-            
+            time.sleep(10 + delay_time)  # Randomize delay between 10-16 seconds
+        
+        except KeyboardInterrupt:
+            print("\n⛔ Script stopped by user")
+            break
         except Exception as e:
             print(f"Error processing {linkedin_url}: {e}")
-            time.sleep(30)  # Longer delay if error occurs
+            time.sleep(30)
     
     driver.quit()
-    print("Processing completed!")
+    print("\n\nProcessing completed!")
 
 if __name__ == "__main__":
     process_profiles()

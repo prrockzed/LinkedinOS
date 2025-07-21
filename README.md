@@ -30,3 +30,9 @@ LinkedinPro/
 ├── requirements.txt           # Python dependencies
 └── README.md                  # Project overview and setup instructions
 ```
+
+---
+
+## How to Run?
+
+Check out here: [Run LinkedinPro](https://github.com/prrockzed/LinkedinPro/blob/main/HOW_TO_RUN.md#how-to-run-this-project-on-a-new-machine)

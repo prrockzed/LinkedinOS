@@ -34,8 +34,8 @@ If it's not installed, you can install it from [python.org](https://www.python.o
 ## 3. Create a Virtual Environment
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: venv\Scripts\activate
 ```
 
 ---

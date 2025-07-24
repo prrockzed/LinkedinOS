@@ -49,12 +49,12 @@ pip install -r requirements.txt
 > If `requirements.txt` doesn't exist, create it with the following content:
 
 ```txt
+dotenv
 requests
-beautifulsoup4
+bs4
 selenium
 gspread
 oauth2client
-python-dotenv
 webdriver-manager
 ```
 

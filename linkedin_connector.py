@@ -86,6 +86,7 @@ def send_connection_request(driver):
             EC.element_to_be_clickable((By.XPATH,
                 "//button[contains(@class, 'artdeco-dropdown__trigger') and .//span[text()='More']]"))
         )
+        print("Found the more button")
         
         # Click the More button to expand dropdown
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", more_button)
@@ -103,7 +104,6 @@ def send_connection_request(driver):
             print("Found Connect button in More dropdown")
         except TimeoutException:
             print("No Connect button found in More dropdown")
-            return False
             
     except TimeoutException:
         # If no More button, proceed with normal Connect button check
@@ -115,7 +115,6 @@ def send_connection_request(driver):
             print("Found standard Connect button (no More menu needed)")
         except TimeoutException:
             print("No standard Connect button found")
-            pass
     
     # Variant 2: <span class="artdeco-button__text">Connect</span> (with parent class check)
     if not connect_button:

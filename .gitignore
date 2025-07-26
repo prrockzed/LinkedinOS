@@ -1,4 +1,6 @@
 credentials.json
 .env
 a.py
-chrome_profile/
+LinkedinConnector/chrome_profile/
+LinkedinConnector/__pycache__/
+todo.txt

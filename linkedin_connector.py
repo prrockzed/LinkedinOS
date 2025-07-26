@@ -1,6 +1,7 @@
 import os
 import time
 import random
+import logging
 from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -15,6 +16,13 @@ from selenium.common.exceptions import (
     TimeoutException,
 )
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%H:%M:%S"
+)
+
+logger = logging.getLogger(__name__)
 
 def setup_gsheet(spreadsheet_url):
     spreadsheet_id = spreadsheet_url.split('/')[5]
@@ -41,17 +49,25 @@ def setup_driver():
 def login_to_linkedin(driver, email, password):
     """Log in to LinkedIn if not already logged in"""
     driver.get("https://www.linkedin.com/login")
+    logger.info("Trying to log in to linkedin")
     
+    # Check if already logged in by looking for feed element
     try:
-        # Check if already logged in by looking for feed element
         WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, ".scaffold-finite-scroll__content"))
         )
-        print("Already logged in to LinkedIn")
+        
+        logger.info("Already logged in to LinkedIn")
         return True
-    except TimeoutException:
-        pass
     
+    except TimeoutException as e:
+        logger.error(f"Timed out when trying to log in. Error is: {e}")
+        
+    except e:
+        logger.error(f"Could not log in directly. Error is: {e}")
+    
+    
+    # Logging via filling up email and password
     try:
         # Fill in login form
         email_field = WebDriverWait(driver, 10).until(
@@ -71,8 +87,9 @@ def login_to_linkedin(driver, email, password):
         )
         print("Successfully logged in to LinkedIn")
         return True
+    
     except Exception as e:
-        print(f"Login failed: {e}")
+        logging.critical("Login Failed. Error is: ", e)
         return False
 
 def send_connection_request(driver):
@@ -106,15 +123,7 @@ def send_connection_request(driver):
             print("No Connect button found in More dropdown")
             
     except TimeoutException:
-        # If no More button, proceed with normal Connect button check
-        try:
-            connect_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH,
-                    "//span[contains(@class, 'display-flex') and contains(@class, 't-normal') and contains(@class, 'flex-1') and text()='Connect']"))
-            )
-            print("Found standard Connect button (no More menu needed)")
-        except TimeoutException:
-            print("No standard Connect button found")
+        print("More Section could not be found")
     
     # Variant 2: <span class="artdeco-button__text">Connect</span> (with parent class check)
     if not connect_button:

@@ -3,5 +3,6 @@ credentials.json
 test.py
 *chrome_profile
 *__pycache__
+*YCombinator_scraped.json
 todo.txt
 combined_output.txt

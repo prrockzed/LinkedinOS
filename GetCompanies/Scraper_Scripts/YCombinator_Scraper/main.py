@@ -1,20 +1,40 @@
 import time
+import json
+import os
 from settings import Config
-from google_sheets import GoogleSheetsManager
 from yc_scraper import get_yc_2025_links
 from company_extractor import extract_founders
-from data_formatter import format_data_for_sheet
+
+def create_scraper_data_folder():
+    # Create Scraper_Data folder if it doesn't exist
+    scraper_data_path = "GetCompanies/Scraper_Data"
+    if not os.path.exists(scraper_data_path):
+        os.makedirs(scraper_data_path)
+        print(f"Created directory: {scraper_data_path}")
+    else:
+        print(f"Directory already exists: {scraper_data_path}")
+    return scraper_data_path
+
+def save_to_json(data, file_path):
+    # Save data to JSON file
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        print(f"Data successfully saved to: {file_path}")
+        print(f"Total records in file: {len(data)}")
+    except Exception as e:
+        print(f"Error saving data to {file_path}: {e}")
 
 def main():
     try:
         # Load configuration
         config = Config()
-        print(f"Using Google Sheet URL from .env: {config.spreadsheet_url}\n")
+        print(f"Starting YC scraper...\n")
         
-        # Setup Google Sheets
-        sheets_manager = GoogleSheetsManager(config.credentials_path)
-        sheet = sheets_manager.setup_sheet(config.spreadsheet_url)
-        sheets_manager.write_headers(sheet)
+        # Create Scraper_Data folder
+        scraper_data_path = create_scraper_data_folder()
+        json_file_path = os.path.join(scraper_data_path, "YCombinator_scraped.json")
+        print("The json_file_path is: ", json_file_path)
         
         # Get YC company links
         print("\nStarting YC company scraping...")
@@ -40,11 +60,11 @@ def main():
 
         print(f"\nTotal founders found: {len(all_founders_data)}")
         
-        # Format and write data to sheet
-        formatted_rows = format_data_for_sheet(all_founders_data)
-        sheets_manager.write_data_to_sheet(sheet, formatted_rows)
+        # Save data to JSON file
+        save_to_json(all_founders_data, json_file_path)
         
         print("Scraping completed!")
+        print(f"Data saved to: {json_file_path}")
         
     except Exception as e:
         print(f"Error in main execution: {e}")

@@ -1,0 +1,24 @@
+[
+  {
+    "company_name": "abc",
+    "founder_name": "def",
+    "linkedin_url": "https://www.linkedin.com/in/ghi/",
+    "company_linkedin": "https://www.linkedin.com/company/jkl/",
+    "company_url": "https://www.ycombinator.com/companies/mno",
+    "about": "pqr",
+    "website": "https://st.co/",
+    "team_size": "uvw",
+    "founding_year": "xyz"
+  },
+  {
+    "company_name": "aa",
+    "founder_name": "aa",
+    "linkedin_url": "https://www.linkedin.com/in/aa/",
+    "company_linkedin": "https://www.linkedin.com/company/aa/",
+    "company_url": "https://www.ycombinator.com/companies/aa",
+    "about": "aa",
+    "website": "https://aa.co/",
+    "team_size": "aa",
+    "founding_year": "aa"
+  }
+]

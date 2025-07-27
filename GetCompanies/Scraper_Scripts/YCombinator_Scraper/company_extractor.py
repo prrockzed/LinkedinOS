@@ -1,64 +1,7 @@
-import os
-import time
-from dotenv import load_dotenv
+import re
 import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import re
-
-
-def setup_gsheet(spreadsheet_url):
-    spreadsheet_id = spreadsheet_url.split('/')[5]
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
-    client = gspread.authorize(creds)
-    sheet = client.open_by_key(spreadsheet_id).sheet1
-    return sheet
-
-def setup_driver():
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    driver = webdriver.Chrome(options=options)
-    return driver
-
-def get_yc_2025_links(y_combinator_url, y_combinator_batch):
-    driver = setup_driver()
-    driver.get(y_combinator_batch)
-    time.sleep(3)
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-    links = soup.find_all("a", href=True)
-    company_links = [y_combinator_url + l["href"] for l in links if l["href"].startswith("/companies/")]
-    driver.quit()
-    return list(set(company_links))
-
-def is_valid_linkedin_profile(url):
-    """Check if LinkedIn URL is a valid personal profile"""
-    if not url or "linkedin.com" not in url:
-        return False
-    
-    # Exclude school, company, and Y Combinator URLs
-    excluded_patterns = [
-        "linkedin.com/school/",
-        "linkedin.com/company/",
-        "linkedin.com/school/y-combinator",
-        "linkedin.com/company/y-combinator"
-    ]
-    
-    for pattern in excluded_patterns:
-        if pattern in url.lower():
-            return False
-    
-    # Only include personal profiles (linkedin.com/in/)
-    if "linkedin.com/in/" in url:
-        return True
-    
-    return False
+from validation import is_valid_linkedin_profile
 
 def extract_founders_info(soup):
     """Extract founders information from the company page"""
@@ -194,6 +137,7 @@ def extract_company_linkedin(soup):
     return ''
 
 def extract_founders(company_url):
+    """Main function to extract all founder and company information"""
     print(f"Extracting from: {company_url}")
     
     try:
@@ -231,112 +175,3 @@ def extract_founders(company_url):
         })
     
     return founders_data
-
-def format_data_for_sheet(all_founders_data):
-    """Format data according to requirements: group by company, show company info only once"""
-    # Group by company
-    companies = {}
-    for founder in all_founders_data:
-        company_name = founder['company_name']
-        if company_name not in companies:
-            companies[company_name] = []
-        companies[company_name].append(founder)
-    
-    # Sort companies alphabetically
-    sorted_companies = sorted(companies.items())
-    
-    formatted_rows = []
-    for company_name, founders in sorted_companies:
-        for i, founder in enumerate(founders):
-            if i == 0:  # First founder of the company
-                row = [
-                    company_name,
-                    founder['founder_name'],
-                    founder['linkedin_url'],
-                    founder['company_linkedin'],
-                    founder['company_url'],
-                    founder['about'],
-                    founder['website'],
-                    founder['team_size'],
-                    founder['founding_year']
-                ]
-            else:  # Subsequent founders
-                row = [
-                    "",  # Empty company name
-                    founder['founder_name'],
-                    founder['linkedin_url'],
-                    "",  # Empty company LinkedIn
-                    "",  # Empty company URL
-                    "",  # Empty about
-                    "",  # Empty website
-                    "",  # Empty team size
-                    ""   # Empty founding year
-                ]
-            formatted_rows.append(row)
-    
-    return formatted_rows
-
-def main():
-    load_dotenv()
-    
-    spreadsheet_url = os.getenv("SPREADSHEET_URL")
-    y_combinator_url = os.getenv("Y_COMBINATOR_URL")
-    y_combinator_batch = os.getenv("Y_COMBINATOR_BATCH")
-    
-    if not spreadsheet_url:
-        print("Error: Google Sheet URL not found in .env file.")
-        print("Please ensure SPREADSHEET_URL is set in the .env file!")
-        return
-
-    print(f"Using Google Sheet URL from .env: {spreadsheet_url}\n")
-    
-    print("\nStarting YC company scraping...")
-    
-    sheet = setup_gsheet(spreadsheet_url=spreadsheet_url)
-    sheet.clear()
-    
-    # Updated headers with new columns
-    headers = ["Company Name", "Founders' Name", "Founders' LinkedIn URL", "Company's LinkedIn URL", 
-               "Company's YC URL", "About Company", "Company's Website", "Team Size", "Founding Year"]
-    sheet.append_row(headers)
-    
-    yc_links = get_yc_2025_links(y_combinator_url=y_combinator_url, y_combinator_batch=y_combinator_batch)
-    print(f"Found {len(yc_links)} company links")
-    
-    all_founders_data = []
-
-    for i, link in enumerate(yc_links, 1):
-        print(f"Processing {i}/{len(yc_links)}: {link}")
-        try:
-            founders = extract_founders(link)
-            if founders:
-                all_founders_data.extend(founders)
-                print(f"  Found {len(founders)} founders")
-            else:
-                print(f"  No founders found")
-        except Exception as e:
-            print(f"  Error processing {link}: {e}")
-        
-        # Add delay to avoid rate limiting
-        time.sleep(2)
-
-    print(f"\nTotal founders found: {len(all_founders_data)}")
-    
-    # Format data for sheet
-    formatted_rows = format_data_for_sheet(all_founders_data)
-    
-    # Write to sheet
-    print("Writing to Google Sheet...")
-    for i, row in enumerate(formatted_rows, 1):
-        try:
-            sheet.append_row(row)
-            if i % 10 == 0:
-                print(f"  Written {i}/{len(formatted_rows)} rows")
-            time.sleep(1)  # Rate limiting
-        except Exception as e:
-            print(f"Error writing row {i}: {e}")
-
-    print("Scraping completed!")
-
-if __name__ == "__main__":
-    main()

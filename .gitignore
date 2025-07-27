@@ -1,7 +1,7 @@
 credentials.json
 .env
 test.py
-LinkedinConnector/chrome_profile/
-LinkedinConnector/__pycache__/
+*chrome_profile
+*__pycache__
 todo.txt
 combined_output.txt

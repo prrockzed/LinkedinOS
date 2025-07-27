@@ -36,3 +36,9 @@ LinkedinPro/
 ## How to Run?
 
 Check out here: [Run LinkedinPro](https://github.com/prrockzed/LinkedinPro/blob/main/HOW_TO_RUN.md#how-to-run-this-project-on-a-new-machine)
+
+---
+
+## How to Contribute?
+
+Check out here: [Contributing.md](https://github.com/prrockzed/LinkedinPro/blob/main/CONTRIBUTING.md#--contribution--)

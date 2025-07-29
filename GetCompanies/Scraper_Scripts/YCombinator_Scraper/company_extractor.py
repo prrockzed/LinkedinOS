@@ -1,7 +1,10 @@
 import re
 import requests
+import logging
 from bs4 import BeautifulSoup
 from validation import is_valid_linkedin_profile
+
+logger = logging.getLogger(__name__)
 
 def extract_founders_info(soup):
     """Extract founders information from the company page"""
@@ -137,8 +140,8 @@ def extract_company_linkedin(soup):
     return ''
 
 def extract_founders(company_url):
-    """Main function to extract all founder and company information"""
-    print(f"Extracting from: {company_url}")
+    # Main function to extract all founder and company information
+    logger.info(f"Extracting from: {company_url}")
     
     try:
         response = requests.get(company_url, timeout=10)

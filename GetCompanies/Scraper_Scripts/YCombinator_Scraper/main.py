@@ -1,9 +1,13 @@
 import time
 import json
 import os
+import logging
 from settings import Config
+from tools.blank_logger import log_blank_line
 from yc_scraper import get_yc_2025_links
 from company_extractor import extract_founders
+
+logger = logging.getLogger(__name__)
 
 def create_scraper_data_folder():
     # Create Scraper_Data folder if it doesn't exist
@@ -34,17 +38,20 @@ def main():
         # Create Scraper_Data folder
         scraper_data_path = create_scraper_data_folder()
         json_file_path = os.path.join(scraper_data_path, "YCombinator_scraped.json")
-        print("The json_file_path is: ", json_file_path)
+        logger.info("The json_file_path is: ", json_file_path)
         
         # Get YC company links
         print("\nStarting YC company scraping...")
         yc_links = get_yc_2025_links(config.y_combinator_url, config.y_combinator_batch)
-        print(f"Found {len(yc_links)} company links")
+        logger.info(f"Found {len(yc_links)} company links")
+        log_blank_line()
         
         # Extract data from each company
         all_founders_data = []
         for i, link in enumerate(yc_links, 1):
-            print(f"Processing {i}/{len(yc_links)}: {link}")
+            if i > 5:
+                break
+            logger.info(f"Processing {i}/{len(yc_links)}: {link}")
             try:
                 founders = extract_founders(link)
                 if founders:

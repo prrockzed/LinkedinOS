@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from web_driver import setup_driver
 
 def get_yc_2025_links(y_combinator_url, y_combinator_batch):
-    """Get all company links from Y Combinator batch page"""
+    # Get all company links from Y Combinator batch page
     driver = setup_driver()
     try:
         driver.get(y_combinator_batch)

@@ -34,6 +34,37 @@ def create_scraper_data_folder():
     log_blank_line()
     return scraper_data_path
 
+def add_numbering_to_data(all_founders_data):
+    """Add serial numbers and company numbers to the founders data"""
+    company_url_to_number = {}
+    company_counter = 1
+    serial_counter = 1
+    
+    # Process each founder record
+    for founder_data in all_founders_data:
+        company_url = founder_data.get('company_url', '')
+        
+        # Assign company number (same for all founders from the same company)
+        if company_url not in company_url_to_number:
+            company_url_to_number[company_url] = company_counter
+            company_counter += 1
+        
+        # Create new ordered dictionary with serial number and company number first
+        numbered_data = {
+            "serial_number": serial_counter,
+            "company_number": company_url_to_number[company_url]
+        }
+        
+        # Add all existing data
+        numbered_data.update(founder_data)
+        
+        # Replace the original data with numbered data
+        all_founders_data[all_founders_data.index(founder_data)] = numbered_data
+        
+        serial_counter += 1
+    
+    return all_founders_data
+
 def save_to_json(data, file_path):
     # Save data to JSON file
     try:
@@ -41,6 +72,13 @@ def save_to_json(data, file_path):
             json.dump(data, f, indent=2, ensure_ascii=False)
         logger.info(f"Data successfully saved to: {file_path}")
         logger.info(f"Total records in file: {len(data)}")
+        
+        # Log summary statistics
+        if data:
+            unique_companies = len(set(record.get('company_number', 0) for record in data))
+            logger.info(f"Total unique companies: {unique_companies}")
+            logger.info(f"Total founders: {len(data)}")
+            
     except Exception as e:
         logger.error(f"Error saving data to {file_path}: {e}")
 
@@ -83,6 +121,12 @@ def main():
 
         log_blank_line()
         logger.info(f"Total founders found: {len(all_founders_data)}")
+        
+        # Add serial numbers and company numbers
+        logger.info("Adding serial numbers and company numbers...")
+        all_founders_data = add_numbering_to_data(all_founders_data)
+        logger.info("Numbering completed!")
+        log_blank_line()
         
         # Save data to JSON file
         save_to_json(all_founders_data, json_file_path)

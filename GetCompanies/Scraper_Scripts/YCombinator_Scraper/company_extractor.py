@@ -2,6 +2,7 @@ import re
 import requests
 import logging
 from bs4 import BeautifulSoup
+from tools.blank_logger import log_blank_line
 from validation import is_valid_linkedin_profile
 
 logger = logging.getLogger(__name__)
@@ -147,7 +148,8 @@ def extract_founders(company_url):
         response = requests.get(company_url, timeout=10)
         response.raise_for_status()
     except Exception as e:
-        print(f"Error fetching {company_url}: {e}")
+        logger.error(f"Error fetching {company_url}: {e}")
+        log_blank_line()
         return None
     
     soup = BeautifulSoup(response.text, "html.parser")

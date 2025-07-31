@@ -1,6 +1,7 @@
 import logging
 import subprocess
 import sys
+import os
 
 from tools.blank_logger import log_blank_line
 from tools.get_user_choice import get_user_choice
@@ -15,20 +16,28 @@ logger = logging.getLogger(__name__)
 
 def run_linkedin_connector():
     # Run the LinkedinConnector/main.py script
-    logger.info("Starting LinkedinConnector...")
-    log_blank_line()
+    logger.info("Calling LinkedinConnector")
     try:
-        subprocess.run([sys.executable, "LinkedinConnector/main.py"], check=True)
+        # Set PYTHONPATH to include current directory
+        env = os.environ.copy()
+        env['PYTHONPATH'] = os.getcwd()
+        
+        subprocess.run([sys.executable, "LinkedinConnector/main.py"], 
+                        check=True, env=env, cwd=os.getcwd())
     except subprocess.CalledProcessError as e:
         logger.error(f"LinkedinConnector failed: {e}")
     log_blank_line()
 
 def run_ycombinator_scraper():
     # Run the YCombinator scraper script
-    logger.info("Starting YCombinator Scraper...")
-    log_blank_line()
+    logger.info("Calling YCombinator Scraper method")
     try:
-        subprocess.run([sys.executable, "GetCompanies/Scraper_Scripts/YCombinator_Scraper/main.py"], check=True)
+        # Set PYTHONPATH to include current directory and change working directory
+        env = os.environ.copy()
+        env['PYTHONPATH'] = os.getcwd()
+        
+        subprocess.run([sys.executable, "GetCompanies/Scraper_Scripts/YCombinator_Scraper/main.py"], 
+                        check=True, env=env, cwd=os.getcwd())
     except subprocess.CalledProcessError as e:
         logger.error(f"YCombinator scraper failed: {e}")
     log_blank_line()

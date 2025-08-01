@@ -23,18 +23,18 @@ def extract_founders_info(soup):
         founder_name = name_element.get_text(strip=True)
         
         # Find LinkedIn URL in this section
-        linkedin_url = None
+        founder_linkedin_url = None
         social_links = section.find_all('a', href=True)
         for link in social_links:
             href = link.get('href', '')
             if is_valid_linkedin_profile(href):
-                linkedin_url = href
+                founder_linkedin_url = href
                 break
         
-        if founder_name and linkedin_url:
+        if founder_name and founder_linkedin_url:
             founders.append({
                 'name': founder_name,
-                'linkedin_url': linkedin_url
+                'founder_linkedin_url': founder_linkedin_url
             })
     
     return founders
@@ -140,15 +140,15 @@ def extract_company_linkedin(soup):
             return link.get('href')
     return ''
 
-def extract_founders(company_url):
+def extract_founders(company_yc_url):
     # Main function to extract all founder and company information
-    logger.info(f"Extracting from: {company_url}")
+    logger.info(f"Extracting from: {company_yc_url}")
     
     try:
-        response = requests.get(company_url, timeout=10)
+        response = requests.get(company_yc_url, timeout=10)
         response.raise_for_status()
     except Exception as e:
-        logger.error(f"Error fetching {company_url}: {e}")
+        logger.error(f"Error fetching {company_yc_url}: {e}")
         log_blank_line()
         return None
     
@@ -170,9 +170,9 @@ def extract_founders(company_url):
         founders_data.append({
             'company_name': company_details['name'],
             'founder_name': founder['name'],
-            'linkedin_url': founder['linkedin_url'],
+            'founder_linkedin_url': founder['founder_linkedin_url'],
             'company_linkedin': company_linkedin,
-            'company_url': company_url,
+            'company_yc_url': company_yc_url,
             'about': company_details['about'],
             'website': company_details['website'],
             'team_size': company_details['team_size'],

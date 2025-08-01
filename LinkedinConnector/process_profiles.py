@@ -47,16 +47,16 @@ def process_profiles():
     for i, record in enumerate(records, 1):
         delay_time = random.randint(0, 6)
 
-        linkedin_url = record.get("Founders' LinkedIn URL", "").strip()
-        if not linkedin_url:
+        founder_linkedin_url = record.get("Founders' LinkedIn URL", "").strip()
+        if not founder_linkedin_url:
             logger.warning(f"Skipping row {i} - no LinkedIn URL")
             continue
             
         log_blank_line()
-        logger.info(f"Processing {i}/{len(records)}: {linkedin_url}")
+        logger.info(f"Processing {i}/{len(records)}: {founder_linkedin_url}")
         
         try:
-            driver.get(linkedin_url)
+            driver.get(founder_linkedin_url)
             time.sleep(5)
             
             # Scroll to ensure Connect button is visible
@@ -64,7 +64,7 @@ def process_profiles():
             time.sleep(1)
             
             if not send_connection_request(driver):
-                logger.warning(f"⚠️ Failed to connect with {linkedin_url.split('/')[-1]}")
+                logger.warning(f"⚠️ Failed to connect with {founder_linkedin_url.split('/')[-1]}")
                 
             # Add delay to avoid rate limiting
             time.sleep(10 + delay_time)  # Randomize delay between 10-16 seconds
@@ -74,7 +74,7 @@ def process_profiles():
             logger.warning("⛔ Script stopped by user")
             break
         except Exception as e:
-            logger.error(f"Error processing {linkedin_url}: {e}")
+            logger.error(f"Error processing {founder_linkedin_url}: {e}")
             time.sleep(20)
     
     driver.quit()

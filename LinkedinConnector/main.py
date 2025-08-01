@@ -1,6 +1,7 @@
 import logging
-from blank_logger import log_blank_line
 from process_profiles import process_profiles
+
+from tools.blank_logger import log_blank_line
 
 logging.basicConfig(
   level=logging.INFO,

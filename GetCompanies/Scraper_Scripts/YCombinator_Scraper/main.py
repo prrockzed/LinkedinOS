@@ -47,9 +47,12 @@ def main():
         log_info(f"The json_file_path is: {json_file_path}", 1)
         
         # Get YC company links
-        log_info("Scraping started... might have to wait for a while")
+        log_info("Scraping started... this will take a while as we need to load all companies")
+        log_info("The script will scroll through the page multiple times to load all companies")
+        log_info("Please be patient - this process can take 2-5 minutes depending on the batch size", 1)
+        
         yc_links = get_yc_2025_links(y_combinator_url, y_combinator_batch_url)
-        log_info(f"Found {len(yc_links)} company links", 1)
+        log_info(f"Successfully found {len(yc_links)} company links", 1)
         
         if len(yc_links) == 0:
             log_warning("No company links found. This might be because:")

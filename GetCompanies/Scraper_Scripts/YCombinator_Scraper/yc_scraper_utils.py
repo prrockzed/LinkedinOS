@@ -18,7 +18,7 @@ def create_scraper_data_folder():
     return scraper_data_path
 
 def add_numbering_to_data(all_founders_data):
-    """Add serial numbers and company numbers to the founders data"""
+    """Add serial numbers, company numbers, and processed_data parameter to the founders data"""
     company_url_to_number = {}
     company_counter = 1
     serial_counter = 1
@@ -32,10 +32,11 @@ def add_numbering_to_data(all_founders_data):
             company_url_to_number[company_url] = company_counter
             company_counter += 1
         
-        # Create new ordered dictionary with serial number and company number first
+        # Create new ordered dictionary with serial number, company number, and processed_data first
         numbered_data = {
             "serial_number": serial_counter,
-            "company_number": company_url_to_number[company_url]
+            "company_number": company_url_to_number[company_url],
+            "processed_data": False  # New parameter - initially set to False
         }
         
         # Add all existing data
@@ -59,8 +60,10 @@ def save_to_json(data, file_path):
         # Log summary statistics
         if data:
             unique_companies = len(set(record.get('company_number', 0) for record in data))
+            processed_count = len([record for record in data if record.get('processed_data', False)])
             logger.info(f"Total unique companies: {unique_companies}")
             logger.info(f"Total founders: {len(data)}")
+            logger.info(f"Initially processed: {processed_count} (should be 0 for new scrapes)")
             
     except Exception as e:
         logger.error(f"Error saving data to {file_path}: {e}")

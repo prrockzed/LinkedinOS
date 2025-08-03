@@ -59,42 +59,60 @@ def get_user_input_for_range(total_records):
     logger.info(f"Will process {limit} connection requests")
     return limit
 
-def update_json_with_status(json_file_path, processed_serials, status="sent"):
-    # Update JSON file to mark processed records with connection status
+def update_json_with_processed_status(json_file_path, processed_serials):
+    """Update JSON file to mark processed records with processed_data=True"""
     try:
         # Load current data
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         # Update records that were processed
+        updated_count = 0
         for record in data:
             if record.get('serial_number') in processed_serials:
-                record['connection_status'] = status
+                record['processed_data'] = True
+                # Keep the old connection_status for backward compatibility
+                if 'connection_status' not in record:
+                    record['connection_status'] = 'sent'
+                updated_count += 1
         
         # Save updated data
         with open(json_file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
             
-        logger.info(f"Updated {len(processed_serials)} records with connection status: {status}")
+        logger.info(f"Updated {updated_count} records with processed_data=True")
         
     except Exception as e:
-        logger.error(f"Error updating JSON file with status: {e}")
+        logger.error(f"Error updating JSON file with processed status: {e}")
 
 def get_next_unprocessed_records(data, limit):
-    # Get the next batch of unprocessed records
+    """Get the next batch of unprocessed records starting from the first False in processed_data"""
     unprocessed = []
     
     # First, sort data by serial_number to ensure correct order
     sorted_data = sorted(data, key=lambda x: x.get('serial_number', 0))
     
+    # Find the first record with processed_data = False
+    start_processing = False
+    
     for record in sorted_data:
-        # Skip if already processed (has connection_status)
-        if record.get('connection_status'):
+        # Start processing from the first False value
+        if not start_processing and not record.get('processed_data', False):
+            start_processing = True
+            logger.info(f"Starting from serial number: {record.get('serial_number', 'N/A')}")
+        
+        # If we haven't reached the first False yet, skip
+        if not start_processing:
+            continue
+            
+        # Skip if already processed (processed_data is True)
+        if record.get('processed_data', False):
             continue
             
         # Skip if no LinkedIn URL
         founder_linkedin_url = record.get("founder_linkedin_url", "").strip()
         if not founder_linkedin_url:
+            logger.warning(f"Skipping serial {record.get('serial_number', 'N/A')} - no LinkedIn URL")
             continue
             
         unprocessed.append(record)
@@ -102,6 +120,11 @@ def get_next_unprocessed_records(data, limit):
         # Stop when we have enough records
         if len(unprocessed) >= limit:
             break
+    
+    if unprocessed:
+        first_serial = unprocessed[0].get('serial_number', 'N/A')
+        last_serial = unprocessed[-1].get('serial_number', 'N/A')
+        logger.info(f"Selected records from serial {first_serial} to {last_serial}")
     
     return unprocessed
 
@@ -127,8 +150,29 @@ def get_batch_info_from_filename(json_file_path):
 def show_processing_stats(data, json_file_path):
     """Show statistics about the data to be processed"""
     total_records = len(data)
-    processed_records = len([r for r in data if r.get('connection_status')])
+    
+    # Count processed records using processed_data parameter
+    processed_records = len([r for r in data if r.get('processed_data', False)])
     unprocessed_records = total_records - processed_records
+    
+    # Find the first unprocessed record's serial number
+    sorted_data = sorted(data, key=lambda x: x.get('serial_number', 0))
+    first_unprocessed_serial = None
+    for record in sorted_data:
+        if not record.get('processed_data', False) and record.get("founder_linkedin_url", "").strip():
+            first_unprocessed_serial = record.get('serial_number', 'N/A')
+            break
+    
+    # Count records with LinkedIn URLs that can be processed (from first False onwards)
+    processable_records = 0
+    start_counting = False
+    for record in sorted_data:
+        if not start_counting and not record.get('processed_data', False):
+            start_counting = True
+        
+        if start_counting and not record.get('processed_data', False) and record.get("founder_linkedin_url", "").strip():
+            processable_records += 1
+    
     unique_companies = len(set(r.get('company_number', 0) for r in data if r.get('company_number')))
     
     batch_info = get_batch_info_from_filename(json_file_path)
@@ -138,7 +182,10 @@ def show_processing_stats(data, json_file_path):
     logger.info(f"Total founders: {total_records}")
     logger.info(f"Unique companies: {unique_companies}")
     logger.info(f"Already processed: {processed_records}")
-    logger.info(f"Available for processing: {unprocessed_records}")
+    logger.info(f"Remaining unprocessed: {unprocessed_records}")
+    if first_unprocessed_serial:
+        logger.info(f"Next processing will start from serial: {first_unprocessed_serial}")
+    logger.info(f"Available for processing (from first False): {processable_records}")
 
 # Main function to get and process LinkedIn profiles from JSON file
 def process_profiles_with_file(json_file_path):
@@ -166,13 +213,29 @@ def process_profiles_with_file(json_file_path):
     show_processing_stats(all_data, json_file_path)
     
     # Get user input for how many connections to send
-    limit = get_user_input_for_range(len(all_data))
+    available_records = 0
+    sorted_data = sorted(all_data, key=lambda x: x.get('serial_number', 0))
+    start_counting = False
+    
+    # Count available records from the first False onwards
+    for record in sorted_data:
+        if not start_counting and not record.get('processed_data', False):
+            start_counting = True
+        
+        if start_counting and not record.get('processed_data', False) and record.get("founder_linkedin_url", "").strip():
+            available_records += 1
+    
+    if available_records == 0:
+        logger.info("No unprocessed records with LinkedIn URLs found. All founders may already have been processed.")
+        return
+    
+    limit = get_user_input_for_range(available_records)
     
     # Get next unprocessed records
     records_to_process = get_next_unprocessed_records(all_data, limit)
     
     if not records_to_process:
-        logger.info("No unprocessed records found. All founders may already have connection requests sent.")
+        logger.info("No unprocessed records found. All founders may already have been processed.")
         return
     
     logger.info(f"Found {len(records_to_process)} unprocessed records to work with")
@@ -217,7 +280,7 @@ def process_profiles_with_file(json_file_path):
             else:
                 logger.warning(f"Failed to connect with {founder_name}")
             
-            # Track this record as processed
+            # Track this record as processed (regardless of success/failure)
             processed_serials.append(serial_number)
                 
             # Add delay to avoid rate limiting
@@ -234,13 +297,14 @@ def process_profiles_with_file(json_file_path):
     
     # Update JSON file with processed status
     if processed_serials:
-        update_json_with_status(json_file_path, processed_serials)
+        update_json_with_processed_status(json_file_path, processed_serials)
     
     driver.quit()
     
     log_blank_line(2)
     logger.info(f"Done and dusted. Connection campaign completed!")
     logger.info(f"Successfully sent {successful_connections} out of {len(processed_serials)} connection requests")
+    logger.info(f"Marked {len(processed_serials)} founders as processed (processed_data=True)")
     logger.info(f"Go and have some fun!")
 
 # Legacy function for backward compatibility (if needed)

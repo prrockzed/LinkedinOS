@@ -135,7 +135,7 @@ class YCBatchSelector:
         filename = self.generate_filename(season, year)
         
         log_blank_line()
-        log_info(f"📋 Batch Selection Summary:")
+        log_info(f"Batch Selection Summary:")
         log_info(f"Year: {year}")
         log_info(f"Season: {season}")
         log_info(f"URL: {batch_url}")

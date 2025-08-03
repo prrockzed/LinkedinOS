@@ -47,8 +47,8 @@ def show_menu():
     log_blank_line()
     logger.info("===== LinkedinOS Menu =====")
     log_blank_line()
-    logger.info("1. Run LinkedinConnector")
-    logger.info("2. Run YCombinator Scraper")
+    logger.info("1. Run YCombinator Scraper")
+    logger.info("2. Run LinkedinConnector")
     logger.info("3. Exit (and set the code free)")
     log_blank_line()
 
@@ -63,9 +63,9 @@ def main():
         log_blank_line()
         
         if choice == "1":
-            run_linkedin_connector()
-        elif choice == "2":
             run_ycombinator_scraper()
+        elif choice == "2":
+            run_linkedin_connector()
         else:
             logger.info("Exiting LinkedinOS...")
             logger.info("Goodbye! 👋")

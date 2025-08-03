@@ -44,7 +44,7 @@ def add_numbering_to_data(all_founders_data):
     
     # Process each founder record
     for founder_data in all_founders_data:
-        company_url = founder_data.get('company_url', '')
+        company_url = founder_data.get('company_yc_url', '')
         
         # Assign company number (same for all founders from the same company)
         if company_url not in company_url_to_number:

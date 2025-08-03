@@ -1,4 +1,3 @@
-import logging
 import subprocess
 import sys
 import os
@@ -6,12 +5,6 @@ import os
 from tools.blank_logger import log_blank_line
 from tools.get_user_choice import get_user_choice
 from tools.info_logger import log_info, log_error
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    datefmt="%H:%M:%S"
-)
 
 def run_linkedin_connector():
     # Run the LinkedinConnector/main.py script

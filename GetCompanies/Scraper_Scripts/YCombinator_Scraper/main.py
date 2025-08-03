@@ -1,14 +1,7 @@
 import time
 import os
 import sys
-import logging
-
-# Configure logging for this script
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    datefmt="%H:%M:%S"
-)
+from tools.info_logger import log_info, log_warning, log_error
 
 # Add the project root to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -26,13 +19,11 @@ from yc_scraper_utils import (
     generate_json_filename
 )
 
-logger = logging.getLogger(__name__)
-
 def main():
     try:
         # Load configuration
         config = Config()
-        logger.info(f"Starting YC scraper...")
+        log_info(f"Starting YC scraper...")
         
         # Create Scraper_Data folder
         scraper_data_path = create_scraper_data_folder()
@@ -41,28 +32,26 @@ def main():
         json_filename = generate_json_filename(y_combinator_batch_url)
         
         json_file_path = os.path.join(scraper_data_path, json_filename)
-        logger.info(f"The json_file_path is: {json_file_path}")
-        log_blank_line()
+        log_info(f"The json_file_path is: {json_file_path}", 1)
         
         # Get YC company links
-        logger.info("Scraping started... might have to wait for a while")
+        log_info("Scraping started... might have to wait for a while")
         yc_links = get_yc_2025_links(config.y_combinator_url, config.y_combinator_batch)
-        logger.info(f"Found {len(yc_links)} company links")
-        log_blank_line()
+        log_info(f"Found {len(yc_links)} company links", 1)
         
         # Extract data from each company
         all_founders_data = []
         for i, link in enumerate(yc_links, 1):
-            logger.info(f"Processing {i}/{len(yc_links)}: {link}")
+            log_info(f"Processing {i}/{len(yc_links)}: {link}")
             try:
                 founders = extract_founders(link)
                 if founders:
                     all_founders_data.extend(founders)
-                    logger.info(f"Found {len(founders)} founders")
+                    log_info(f"Found {len(founders)} founders")
                 else:
-                    logger.warning(f"No founders found")
+                    log_warning(f"No founders found")
             except Exception as e:
-                logger.error(f"  Error processing {link}: {e}")
+                log_error(f"  Error processing {link}: {e}")
                 
             log_blank_line()
             
@@ -70,24 +59,22 @@ def main():
             time.sleep(2)
 
         log_blank_line()
-        logger.info(f"Total founders found: {len(all_founders_data)}")
+        log_info(f"Total founders found: {len(all_founders_data)}")
         
         # Add serial numbers and company numbers
-        logger.info("Adding serial numbers and company numbers...")
+        log_info("Adding serial numbers and company numbers...")
         all_founders_data = add_numbering_to_data(all_founders_data)
-        logger.info("Numbering completed!")
-        log_blank_line()
+        log_info("Numbering completed!", 1)
         
         # Save data to JSON file
         save_to_json(all_founders_data, json_file_path)
         
         log_blank_line()
-        logger.info("Scraping completed!")
-        logger.info(f"Data saved to: {json_file_path}")
-        log_blank_line()
+        log_info("Scraping completed!")
+        log_info(f"Data saved to: {json_file_path}", 1)
         
     except Exception as e:
-        logger.error(f"Error in main execution: {e}")
+        log_error(f"Error in main execution: {e}")
 
 if __name__ == "__main__":
     main()

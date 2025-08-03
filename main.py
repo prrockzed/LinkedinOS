@@ -42,15 +42,13 @@ def run_ycombinator_scraper():
 
 def show_menu():
     # Display the menu options
-    log_blank_line()
-    log_info("===== LinkedinOS Menu =====", 1)
+    log_info(1, "===== LinkedinOS Menu =====", 1)
     log_info("1. Run YCombinator Scraper")
     log_info("2. Run LinkedinConnector")
     log_info("3. Exit (and set the code free)", 1)
 
 def main():
-    log_blank_line()
-    log_info("========== LinkedinOS ==========", 1)
+    log_info(1, "========== LinkedinOS ==========", 1)
     
     while True:
         show_menu()

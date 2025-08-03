@@ -1,15 +1,9 @@
 import time
 import os
 import sys
+import logging
 from tools.info_logger import log_info, log_warning, log_error
-
-# Add the project root to Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 from settings import Config
-from tools.blank_logger import log_blank_line
 from yc_scraper import get_yc_2025_links
 from company_extractor import extract_founders
 from yc_scraper_utils import (
@@ -17,6 +11,17 @@ from yc_scraper_utils import (
     add_numbering_to_data,
     save_to_json,
     generate_json_filename
+)
+
+# Add the project root to Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%H:%M:%S"
 )
 
 def main():
@@ -47,19 +52,16 @@ def main():
                 founders = extract_founders(link)
                 if founders:
                     all_founders_data.extend(founders)
-                    log_info(f"Found {len(founders)} founders")
+                    log_info(f"Found {len(founders)} founders", 1)
                 else:
-                    log_warning(f"No founders found")
+                    log_warning(f"No founders found", 1)
             except Exception as e:
-                log_error(f"  Error processing {link}: {e}")
-                
-            log_blank_line()
+                log_error(f"  Error processing {link}: {e}", 1)
             
             # Add delay to avoid rate limiting
             time.sleep(2)
 
-        log_blank_line()
-        log_info(f"Total founders found: {len(all_founders_data)}")
+        log_info(1, f"Total founders found: {len(all_founders_data)}")
         
         # Add serial numbers and company numbers
         log_info("Adding serial numbers and company numbers...")
@@ -69,8 +71,7 @@ def main():
         # Save data to JSON file
         save_to_json(all_founders_data, json_file_path)
         
-        log_blank_line()
-        log_info("Scraping completed!")
+        log_info(1, "Scraping completed!")
         log_info(f"Data saved to: {json_file_path}", 1)
         
     except Exception as e:

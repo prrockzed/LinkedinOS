@@ -3,7 +3,6 @@ import os
 import sys
 import logging
 from tools.info_logger import log_info, log_warning, log_error
-from settings import Config
 from yc_scraper import get_yc_2025_links
 from company_extractor import extract_founders
 from yc_scraper_utils import (
@@ -12,6 +11,7 @@ from yc_scraper_utils import (
     save_to_json,
     generate_json_filename
 )
+from batch_selector import get_yc_batch_selection
 
 # Add the project root to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -26,23 +26,38 @@ logging.basicConfig(
 
 def main():
     try:
-        # Load configuration
-        config = Config()
-        log_info(f"Starting YC scraper...")
+        # Get user's batch selection
+        log_info(f"Starting YC scraper with interactive batch selection...")
+        
+        batch_selection = get_yc_batch_selection()
+        
+        if not batch_selection:
+            log_info("Scraping cancelled. Exiting...")
+            return
         
         # Create Scraper_Data folder
         scraper_data_path = create_scraper_data_folder()
         
-        y_combinator_batch_url = config.y_combinator_batch
-        json_filename = generate_json_filename(y_combinator_batch_url)
+        # Use the selected batch URL and filename
+        y_combinator_url = "https://www.ycombinator.com"
+        y_combinator_batch_url = batch_selection['batch_url']
+        json_filename = batch_selection['filename']
         
         json_file_path = os.path.join(scraper_data_path, json_filename)
         log_info(f"The json_file_path is: {json_file_path}", 1)
         
         # Get YC company links
         log_info("Scraping started... might have to wait for a while")
-        yc_links = get_yc_2025_links(config.y_combinator_url, config.y_combinator_batch)
+        yc_links = get_yc_2025_links(y_combinator_url, y_combinator_batch_url)
         log_info(f"Found {len(yc_links)} company links", 1)
+        
+        if len(yc_links) == 0:
+            log_warning("No company links found. This might be because:")
+            log_warning("1. The batch URL is incorrect")
+            log_warning("2. The batch doesn't exist")
+            log_warning("3. There are no companies in this batch")
+            log_warning("Please verify the batch information and try again.")
+            return
         
         # Extract data from each company
         all_founders_data = []
@@ -63,6 +78,10 @@ def main():
 
         log_info(1, f"Total founders found: {len(all_founders_data)}")
         
+        if len(all_founders_data) == 0:
+            log_warning("No founder data was extracted. Exiting without saving.")
+            return
+        
         # Add serial numbers and company numbers
         log_info("Adding serial numbers and company numbers...")
         all_founders_data = add_numbering_to_data(all_founders_data)
@@ -71,9 +90,13 @@ def main():
         # Save data to JSON file
         save_to_json(all_founders_data, json_file_path)
         
-        log_info(1, "Scraping completed!")
-        log_info(f"Data saved to: {json_file_path}", 1)
+        log_info(1, "Scraping completed successfully!")
+        log_info(f"Data saved to: {json_file_path}")
+        log_info(f"Total companies processed: {len(set(record.get('company_number', 0) for record in all_founders_data))}")
+        log_info(f"Total founders found: {len(all_founders_data)}", 1)
         
+    except KeyboardInterrupt:
+        log_warning(1, "Scraping interrupted by user. Exiting...")
     except Exception as e:
         log_error(f"Error in main execution: {e}")
 

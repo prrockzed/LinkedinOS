@@ -5,6 +5,7 @@ import os
 
 from tools.blank_logger import log_blank_line
 from tools.get_user_choice import get_user_choice
+from tools.info_logger import log_info, log_error
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,11 +13,9 @@ logging.basicConfig(
     datefmt="%H:%M:%S"
 )
 
-logger = logging.getLogger(__name__)
-
 def run_linkedin_connector():
     # Run the LinkedinConnector/main.py script
-    logger.info("Calling LinkedinConnector")
+    log_info("Calling LinkedinConnector")
     try:
         # Set PYTHONPATH to include current directory
         env = os.environ.copy()
@@ -25,12 +24,12 @@ def run_linkedin_connector():
         subprocess.run([sys.executable, "LinkedinConnector/main.py"], 
                         check=True, env=env, cwd=os.getcwd())
     except subprocess.CalledProcessError as e:
-        logger.error(f"LinkedinConnector failed: {e}")
+        log_error(f"LinkedinConnector failed: {e}")
     log_blank_line()
 
 def run_ycombinator_scraper():
     # Run the YCombinator scraper script
-    logger.info("Calling YCombinator Scraper method")
+    log_info("Calling YCombinator Scraper method")
     try:
         # Set PYTHONPATH to include current directory and change working directory
         env = os.environ.copy()
@@ -39,23 +38,20 @@ def run_ycombinator_scraper():
         subprocess.run([sys.executable, "GetCompanies/Scraper_Scripts/YCombinator_Scraper/main.py"], 
                         check=True, env=env, cwd=os.getcwd())
     except subprocess.CalledProcessError as e:
-        logger.error(f"YCombinator scraper failed: {e}")
+        log_error(f"YCombinator scraper failed: {e}")
     log_blank_line()
 
 def show_menu():
     # Display the menu options
     log_blank_line()
-    logger.info("===== LinkedinOS Menu =====")
-    log_blank_line()
-    logger.info("1. Run YCombinator Scraper")
-    logger.info("2. Run LinkedinConnector")
-    logger.info("3. Exit (and set the code free)")
-    log_blank_line()
+    log_info("===== LinkedinOS Menu =====", 1)
+    log_info("1. Run YCombinator Scraper")
+    log_info("2. Run LinkedinConnector")
+    log_info("3. Exit (and set the code free)", 1)
 
 def main():
     log_blank_line()
-    logger.info("========== LinkedinOS ==========")
-    log_blank_line()
+    log_info("========== LinkedinOS ==========", 1)
     
     while True:
         show_menu()
@@ -67,9 +63,8 @@ def main():
         elif choice == "2":
             run_linkedin_connector()
         else:
-            logger.info("Exiting LinkedinOS...")
-            logger.info("Goodbye! 👋")
-            log_blank_line()
+            log_info("Exiting LinkedinOS...")
+            log_info("Goodbye! 👋", 1)
             break
 
 

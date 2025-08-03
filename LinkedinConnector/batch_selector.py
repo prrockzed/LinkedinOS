@@ -6,6 +6,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from tools.get_user_choice import get_user_choice
 from tools.info_logger import log_info, log_warning, log_error
 from tools.blank_logger import log_blank_line
 
@@ -52,9 +53,7 @@ class LinkedInBatchSelector:
         
         while True:
             log_blank_line()
-            print(f"Enter your choice (1-{len(allowed_seasons)}): ", end="", flush=True)
-            choice = input().strip()
-            log_blank_line()
+            choice = get_user_choice(len(allowed_seasons))
             
             try:
                 choice_idx = int(choice) - 1

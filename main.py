@@ -52,7 +52,7 @@ def main():
     
     while True:
         show_menu()
-        choice = get_user_choice()
+        choice = get_user_choice(3) # 3 choices in total
         log_blank_line()
         
         if choice == "1":

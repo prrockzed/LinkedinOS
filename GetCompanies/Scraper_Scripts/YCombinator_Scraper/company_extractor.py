@@ -145,11 +145,10 @@ def extract_founders(company_yc_url):
     logger.info(f"Extracting from: {company_yc_url}")
     
     try:
-        response = requests.get(company_yc_url, timeout=10)
+        response = requests.get(company_yc_url, timeout=20)
         response.raise_for_status()
     except Exception as e:
         logger.error(f"Error fetching {company_yc_url}: {e}")
-        log_blank_line()
         return None
     
     soup = BeautifulSoup(response.text, "html.parser")

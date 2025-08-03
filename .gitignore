@@ -6,3 +6,4 @@ test.py
 *YCombinator_scraped.json
 todo.txt
 combined_output.txt
+*.venv

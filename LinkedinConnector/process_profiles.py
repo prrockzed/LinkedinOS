@@ -84,7 +84,10 @@ def get_next_unprocessed_records(data, limit):
     # Get the next batch of unprocessed records
     unprocessed = []
     
-    for record in data:
+    # First, sort data by serial_number to ensure correct order
+    sorted_data = sorted(data, key=lambda x: x.get('serial_number', 0))
+    
+    for record in sorted_data:
         # Skip if already processed (has connection_status)
         if record.get('connection_status'):
             continue

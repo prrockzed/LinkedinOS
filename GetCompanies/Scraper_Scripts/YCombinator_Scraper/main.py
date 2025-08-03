@@ -3,6 +3,8 @@ import json
 import os
 import sys
 import logging
+from urllib.parse import urlparse, parse_qs
+
 
 # Configure logging for this script
 logging.basicConfig(
@@ -82,6 +84,51 @@ def save_to_json(data, file_path):
     except Exception as e:
         logger.error(f"Error saving data to {file_path}: {e}")
 
+def generate_json_filename(batch_url):
+    """
+    Generates a filename like 'YC_S25_scraped.json' from a URL like
+    'https://www.ycombinator.com/companies?batch=Summer%202025'.
+    """
+    try:
+        # Parse the URL to extract the 'batch' query parameter
+        parsed_url = urlparse(batch_url)
+        query_params = parse_qs(parsed_url.query)
+        
+        # The value will be a list, e.g., ['Summer 2025']
+        batch_info = query_params.get('batch', [''])[0]
+        
+        if not batch_info:
+            # Fallback filename if batch info is not found
+            return "YC_UNKNOWN_scraped.json"
+
+        # Split the batch info into season and year, e.g., "Summer", "2025"
+        parts = batch_info.split()
+        if len(parts) != 2:
+            return "YC_INVALID_scraped.json"
+            
+        season, year = parts[0], parts[1]
+
+        # Map the full season name to its first letter
+        season_map = {
+            'Summer': 'S',
+            'Winter': 'W',
+            'Fall': 'F',
+            'Spring': 'X' # As requested
+        }
+        
+        season_char = season_map.get(season, '?') # '?' for unknown seasons
+        
+        # Get the last two digits of the year
+        year_short = year[-2:]
+        
+        # Construct the final filename
+        return f"YC_{season_char}{year_short}_scraped.json"
+
+    except Exception as e:
+        logger.error(f"Could not generate filename from URL '{batch_url}': {e}")
+        return "YC_ERROR_scraped.json"
+
+
 def main():
     try:
         # Load configuration
@@ -90,7 +137,11 @@ def main():
         
         # Create Scraper_Data folder
         scraper_data_path = create_scraper_data_folder()
-        json_file_path = os.path.join(scraper_data_path, "YCombinator_scraped.json")
+        
+        y_combinator_batch_url = config.y_combinator_batch
+        json_filename = generate_json_filename(y_combinator_batch_url)
+        
+        json_file_path = os.path.join(scraper_data_path, json_filename)
         logger.info(f"The json_file_path is: {json_file_path}")
         log_blank_line()
         

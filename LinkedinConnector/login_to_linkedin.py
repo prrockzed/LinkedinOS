@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-from blank_logger import log_blank_line
+from tools.blank_logger import log_blank_line
 
 logger = logging.getLogger(__name__)
 

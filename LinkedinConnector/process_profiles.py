@@ -108,7 +108,7 @@ def process_profiles():
     
     linkedin_email = os.getenv("LINKEDIN_EMAIL")
     linkedin_password = os.getenv("LINKEDIN_PASSWORD")
-    json_file_path = os.getenv("JSON_FILE_PATH", "GetCompanies/Scraper_Data/YCombinator_scraped.json")
+    json_file_path = os.getenv("JSON_FILE_PATH")
 
     if not linkedin_email or not linkedin_password:
         logger.warning("Error: LinkedIn email or password not found in .env file.")

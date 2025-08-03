@@ -105,13 +105,48 @@ def get_next_unprocessed_records(data, limit):
     
     return unprocessed
 
+def get_batch_info_from_filename(json_file_path):
+    """Extract batch information from filename for display"""
+    filename = os.path.basename(json_file_path)
+    
+    if filename.startswith("YC_") and filename.endswith("_scraped.json"):
+        try:
+            parts = filename.replace("YC_", "").replace("_scraped.json", "")
+            season_char = parts[0]
+            year = "20" + parts[1:]
+            
+            season_map = {'S': 'Summer', 'W': 'Winter', 'F': 'Fall', 'X': 'Spring'}
+            season_name = season_map.get(season_char, 'Unknown')
+            
+            return f"{season_name} {year}"
+        except:
+            pass
+    
+    return filename
+
+def show_processing_stats(data, json_file_path):
+    """Show statistics about the data to be processed"""
+    total_records = len(data)
+    processed_records = len([r for r in data if r.get('connection_status')])
+    unprocessed_records = total_records - processed_records
+    unique_companies = len(set(r.get('company_number', 0) for r in data if r.get('company_number')))
+    
+    batch_info = get_batch_info_from_filename(json_file_path)
+    
+    log_blank_line()
+    logger.info(f"Data Statistics for {batch_info}:")
+    logger.info(f"Total founders: {total_records}")
+    logger.info(f"Unique companies: {unique_companies}")
+    logger.info(f"Already processed: {processed_records}")
+    logger.info(f"Available for processing: {unprocessed_records}")
+
 # Main function to get and process LinkedIn profiles from JSON file
-def process_profiles():
+def process_profiles_with_file(json_file_path):
+    """Process profiles using a specific JSON file path"""
     load_dotenv()
     
     linkedin_email = os.getenv("LINKEDIN_EMAIL")
     linkedin_password = os.getenv("LINKEDIN_PASSWORD")
-    json_file_path = os.getenv("JSON_FILE_PATH")
 
     if not linkedin_email or not linkedin_password:
         logger.warning("Error: LinkedIn email or password not found in .env file.")
@@ -119,14 +154,16 @@ def process_profiles():
         return
 
     logger.info(f"Using LinkedIn email from .env: {linkedin_email}")
-    logger.info(f"Using JSON file path: {json_file_path}")
-    log_blank_line()
+    logger.info(f"Using JSON file: {json_file_path}")
     
     # Load data from JSON file
     all_data = load_json_data(json_file_path)
     if not all_data:
         logger.error("No data loaded from JSON file. Exiting...")
         return
+    
+    # Show processing statistics
+    show_processing_stats(all_data, json_file_path)
     
     # Get user input for how many connections to send
     limit = get_user_input_for_range(len(all_data))
@@ -176,9 +213,9 @@ def process_profiles():
             
             if send_connection_request(driver):
                 successful_connections += 1
-                logger.info(f"✅ Successfully connected with {founder_name}")
+                logger.info(f"Successfully connected with {founder_name}")
             else:
-                logger.warning(f"⚠️ Failed to connect with {founder_name}")
+                logger.warning(f"Failed to connect with {founder_name}")
             
             # Track this record as processed
             processed_serials.append(serial_number)
@@ -188,7 +225,7 @@ def process_profiles():
         
         except KeyboardInterrupt:
             log_blank_line()
-            logger.warning("⛔ Script stopped by user")
+            logger.warning("Script stopped by user")
             break
         except Exception as e:
             logger.error(f"Error processing {founder_linkedin_url}: {e}")
@@ -205,3 +242,15 @@ def process_profiles():
     logger.info(f"Done and dusted. Connection campaign completed!")
     logger.info(f"Successfully sent {successful_connections} out of {len(processed_serials)} connection requests")
     logger.info(f"Go and have some fun!")
+
+# Legacy function for backward compatibility (if needed)
+def process_profiles():
+    """Legacy function that uses .env file path - kept for backward compatibility"""
+    load_dotenv()
+    json_file_path = os.getenv("JSON_FILE_PATH")
+    
+    if not json_file_path:
+        logger.error("JSON_FILE_PATH not found in .env file")
+        return
+    
+    process_profiles_with_file(json_file_path)

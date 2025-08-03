@@ -140,7 +140,6 @@ def process_profiles():
     
     # Setup browser and login
     driver = setup_driver()
-    logger.info("now here")
     if not login_to_linkedin(driver, linkedin_email, linkedin_password):
         logger.critical("Failed to login to LinkedIn")
         driver.quit()

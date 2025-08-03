@@ -142,7 +142,8 @@ def extract_company_linkedin(soup):
 
 def extract_founders(company_yc_url):
     # Main function to extract all founder and company information
-    logger.info(f"Extracting from: {company_yc_url}")
+    company_name = company_yc_url.split('/')[-1]
+    logger.info(f"Extracting from: {company_name}")
     
     try:
         response = requests.get(company_yc_url, timeout=20)

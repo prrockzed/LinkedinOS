@@ -80,6 +80,7 @@ def update_json_with_processed_status(json_file_path, processed_serials):
         with open(json_file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
             
+        log_blank_line()
         logger.info(f"Updated {updated_count} records with processed_data=True")
         
     except Exception as e:

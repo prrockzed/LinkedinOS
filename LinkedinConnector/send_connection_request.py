@@ -52,15 +52,35 @@ def send_connection_request(driver):
             # Get the parent button element
             parent_button = connect_span.find_element(By.XPATH, "./..")
             
-            # Verify parent has required classes
-            parent_classes = parent_button.get_attribute("class").split()
-            required_classes = {"artdeco-button", "artdeco-button--2", "artdeco-button--primary", "ember-view"}
+            # Get parent classes as a set for easier checking
+            parent_classes = set(parent_button.get_attribute("class").split())
             
-            if not all(cls in parent_classes for cls in required_classes):
-                print("⚠️ Connect button parent doesn't have required classes - skipping")
+            # Required base classes that must be present
+            required_base_classes = {"artdeco-button", "artdeco-button--2", "ember-view"}
+            
+            # Must have either primary OR secondary (but not both typically)
+            button_style_classes = {"artdeco-button--primary", "artdeco-button--secondary"}
+            
+            # Classes that should NOT be present
+            excluded_classes = {"artdeco-button--muted"}
+            
+            # Check if all required base classes are present
+            if not all(cls in parent_classes for cls in required_base_classes):
+                print("⚠️ Connect button parent missing required base classes - skipping")
+                return False
+            
+            # Check if at least one of the button style classes is present
+            if not any(cls in parent_classes for cls in button_style_classes):
+                print("⚠️ Connect button parent missing primary/secondary style class - skipping")
+                return False
+                
+            # Check if any excluded classes are present
+            if any(cls in parent_classes for cls in excluded_classes):
+                print("⚠️ Connect button parent has excluded class (muted) - skipping")
                 return False
                 
             connect_button = parent_button
+            print(f"✅ Valid Connect button found with classes: {parent_classes}")
                 
         except TimeoutException:
             print("⚠️ No connect button found")

@@ -101,6 +101,7 @@ class YCBatchSelector:
         log_info("This means the data for this batch has already been scraped.")
         log_blank_line()
         log_info("Do you want to scrape again and overwrite the existing data?")
+        log_info("Caution: This will erase all your data")
         log_info("1. Yes, scrape again")
         log_info("2. No, go back to main menu")
         

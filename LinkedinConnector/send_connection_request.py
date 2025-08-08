@@ -7,6 +7,8 @@ from selenium.common.exceptions import (
     TimeoutException,
 )
 
+from tools.info_logger import log_error, log_info, log_warning
+
 def send_connection_request(driver):
     """Send connection request to LinkedIn profile"""
     # Try both variants of Connect button
@@ -19,27 +21,36 @@ def send_connection_request(driver):
             EC.element_to_be_clickable((By.XPATH,
                 "//button[contains(@class, 'artdeco-dropdown__trigger') and .//span[text()='More']]"))
         )
-        print("Found the more button")
+        log_info("Found the more button")
         
         # Click the More button to expand dropdown
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", more_button)
         time.sleep(0.5)
         driver.execute_script("arguments[0].click();", more_button)
-        print("🔘 More button clicked to expand menu")
+        log_info("🔘 More button clicked to expand menu")
         time.sleep(1)  # Wait for dropdown to appear
         
-        # Now look for Connect button in dropdown
+        # Now look for Connect button in dropdown - try both container types
         try:
-            connect_button = WebDriverWait(driver, 10).until(
+            # Try first container type: artdeco-dropdown__content
+            connect_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH,
                     "//div[contains(@class, 'artdeco-dropdown__content')]//span[contains(@class, 'display-flex') and contains(@class, 't-normal') and contains(@class, 'flex-1') and text()='Connect']"))
             )
-            print("Found Connect button in More dropdown")
+            log_info("Found Connect button in More dropdown (content container)")
         except TimeoutException:
-            print("No Connect button found in More dropdown")
+            try:
+                # Try second container type: artdeco-dropdown__item with is-dropdown
+                connect_button = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH,
+                        "//div[contains(@class, 'artdeco-dropdown__item') and contains(@class, 'artdeco-dropdown__item--is-dropdown')]//span[contains(@class, 'display-flex') and contains(@class, 't-normal') and contains(@class, 'flex-1') and text()='Connect']"))
+                )
+                log_info("Found Connect button in More dropdown (item container)")
+            except TimeoutException:
+                log_info("No Connect button found in More dropdown")
             
     except TimeoutException:
-        print("More Section could not be found")
+        log_error("More Section could not be found")
     
     # Variant 2: <span class="artdeco-button__text">Connect</span> (with parent class check)
     if not connect_button:
@@ -66,34 +77,34 @@ def send_connection_request(driver):
             
             # Check if all required base classes are present
             if not all(cls in parent_classes for cls in required_base_classes):
-                print("⚠️ Connect button parent missing required base classes - skipping")
+                log_info("⚠️ Connect button parent missing required base classes - skipping")
                 return False
             
             # Check if at least one of the button style classes is present
             if not any(cls in parent_classes for cls in button_style_classes):
-                print("⚠️ Connect button parent missing primary/secondary style class - skipping")
+                log_info("⚠️ Connect button parent missing primary/secondary style class - skipping")
                 return False
                 
             # Check if any excluded classes are present
             if any(cls in parent_classes for cls in excluded_classes):
-                print("⚠️ Connect button parent has excluded class (muted) - skipping")
+                log_info("⚠️ Connect button parent has excluded class (muted) - skipping")
                 return False
                 
             connect_button = parent_button
-            print(f"✅ Valid Connect button found with classes: {parent_classes}")
+            log_info(f"✅ Valid Connect button found with classes: {parent_classes}")
                 
         except TimeoutException:
-            print("⚠️ No connect button found")
+            log_warning("⚠️ No connect button found")
             return False
         except NoSuchElementException:
-            print("⚠️ Couldn't verify parent element - skipping")
+            log_info("⚠️ Couldn't verify parent element - skipping")
             return False
 
     try:
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", connect_button)
         time.sleep(0.5)
         driver.execute_script("arguments[0].click();", connect_button)
-        print("🔘 Connect button clicked")
+        log_info("🔘 Connect button clicked")
         
         # Handle Send without note if appears
         try:
@@ -102,12 +113,12 @@ def send_connection_request(driver):
                     "//span[text()='Send without a note']/ancestor::button[contains(@class, 'artdeco-button')]"))
             )
             driver.execute_script("arguments[0].click();", send_button)
-            print("✅ Connection sent (without note)")
+            log_info("✅ Connection sent (without note)")
             return True
         except TimeoutException:
-            print("ℹ️ No 'Send without note' dialog appeared")
+            log_info("ℹ️ No 'Send without note' dialog appeared")
             return True
             
     except Exception as e:
-        print(f"❌ Error sending connection: {str(e)}")
+        log_error(f"❌ Error sending connection: {str(e)}")
         return False

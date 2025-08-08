@@ -2,7 +2,6 @@ import re
 import requests
 import logging
 from bs4 import BeautifulSoup
-from tools.blank_logger import log_blank_line
 from validation import is_valid_linkedin_profile
 
 logger = logging.getLogger(__name__)

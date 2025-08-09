@@ -12,7 +12,7 @@ from send_connection_request import send_connection_request
 logger = logging.getLogger(__name__)
 
 def load_json_data(json_file_path):
-    # Load founder data from JSON file
+    """Load founder data from JSON file"""
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -29,7 +29,7 @@ def load_json_data(json_file_path):
         return []
 
 def get_user_input_for_range(total_records):
-    # Get user input for the range of records to process
+    """Get user input for the range of records to process"""
     log_blank_line()
     logger.info(f"Total founders available: {total_records}")
     
@@ -65,7 +65,7 @@ def update_json_with_connection_status(json_file_path, status_updates):
     Args:
         json_file_path (str): Path to the JSON file
         status_updates (dict): Dictionary mapping serial_number to connection_status
-                                e.g., {1: 'Connection Sent', 2: 'Failed to connect'}
+                                e.g., {1: 'Connection Sent', 2: 'Already Connected'}
     """
     try:
         # Load current data
@@ -93,8 +93,9 @@ def update_json_with_connection_status(json_file_path, status_updates):
         for status in status_updates.values():
             status_summary[status] = status_summary.get(status, 0) + 1
         
+        logger.info("Status Summary for this batch:")
         for status, count in status_summary.items():
-            logger.info(f"{status}: {count} records")
+            logger.info(f"  {status}: {count} records")
         
     except Exception as e:
         logger.error(f"Error updating JSON file with connection status: {e}")
@@ -213,7 +214,19 @@ def show_processing_stats(data, json_file_path):
         logger.info(f"Next processing will start from serial: {first_unprocessed_serial}")
     logger.info(f"Available for processing (from first False): {processable_records}")
 
-# Main function to get and process LinkedIn profiles from JSON file
+def get_status_emoji_and_message(status):
+    """Get appropriate emoji and message for each connection status"""
+    status_info = {
+        "Connection Sent": ("✅", "Successfully sent connection request"),
+        "Already Connected": ("🤝", "Already connected to this person"),
+        "Pending state": ("⏳", "Connection request is pending"),
+        "Email wanted": ("📧", "Email verification required for connection"),
+        "Doesn't want to connect": ("🚫", "Cannot connect - no connect button available"),
+        "Failed to connect": ("❌", "Failed to process connection request")
+    }
+    
+    return status_info.get(status, ("❓", "Unknown status"))
+
 def process_profiles_with_file(json_file_path):
     """Process profiles using a specific JSON file path"""
     load_dotenv()
@@ -300,16 +313,28 @@ def process_profiles_with_file(json_file_path):
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight/3);")
             time.sleep(1)
             
-            if send_connection_request(driver):
+            # Enhanced connection handling with detailed status
+            success, status = send_connection_request(driver)
+            
+            # Get emoji and message for status
+            emoji, message = get_status_emoji_and_message(status)
+            
+            # Log the result with appropriate emoji and message
+            logger.info(f"{emoji} {message} - {founder_name}")
+            
+            # Track successful connections (only for "Connection Sent")
+            if success and status == "Connection Sent":
                 successful_connections += 1
-                status_updates[serial_number] = "Connection Sent"
-                logger.info(f"Successfully sent connection request to {founder_name}")
-            else:
-                status_updates[serial_number] = "Failed to connect"
-                logger.warning(f"Failed to send connection requet to {founder_name}")
+            
+            # Store status for JSON update
+            status_updates[serial_number] = status
                 
             # Add delay to avoid rate limiting
-            time.sleep(10 + delay_time)  # Randomize delay between 10-16 seconds
+            # Shorter delay for already connected/pending since no actual request was made
+            if status in ["Already Connected", "Pending state"]:
+                time.sleep(5 + delay_time//2)  # 5-8 seconds
+            else:
+                time.sleep(10 + delay_time)  # 10-16 seconds for actual connection attempts
         
         except KeyboardInterrupt:
             log_blank_line()
@@ -327,10 +352,22 @@ def process_profiles_with_file(json_file_path):
     driver.quit()
     
     log_blank_line(2)
-    logger.info(f"Done and dusted. Connection campaign completed!")
-    logger.info(f"Successfully sent {successful_connections} out of {len(status_updates)} connection requests")
-    logger.info(f"Updated {len(status_updates)} founders with connection status")
-    logger.info(f"Go and have some fun!")
+    logger.info(f"🎉 Connection campaign completed!")
+    logger.info(f"📊 Campaign Results:")
+    logger.info(f"   • New connections sent: {successful_connections}")
+    logger.info(f"   • Total profiles processed: {len(status_updates)}")
+    
+    # Show detailed breakdown
+    final_status_counts = {}
+    for status in status_updates.values():
+        final_status_counts[status] = final_status_counts.get(status, 0) + 1
+    
+    logger.info(f"📈 Detailed Breakdown:")
+    for status, count in sorted(final_status_counts.items()):
+        emoji, _ = get_status_emoji_and_message(status)
+        logger.info(f"   {emoji} {status}: {count}")
+    
+    logger.info(f"🚀 Go and have some fun!")
 
 # Legacy function for backward compatibility (if needed)
 def process_profiles():

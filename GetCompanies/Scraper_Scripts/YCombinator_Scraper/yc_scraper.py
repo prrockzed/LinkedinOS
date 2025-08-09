@@ -107,6 +107,57 @@ def scroll_and_load_all_companies(driver, max_scrolls=50, scroll_pause_time=3):
     
     return True
 
+def is_valid_company_link(href, base_url):
+    """
+    Check if the href is a valid company link that should be processed
+    
+    Args:
+        href: The href attribute from the link
+        base_url: The base Y Combinator URL
+        
+    Returns:
+        bool: True if it's a valid company link, False otherwise
+    """
+    if not href.startswith("/companies/"):
+        return False
+        
+    if href == "/companies/":  # Root companies page
+        return False
+        
+    # Extract company identifier from href
+    company_identifier = href.replace("/companies/", "")
+    
+    # List of non-company pages that should be excluded
+    excluded_pages = {
+        "founders",  # Generic founders page
+        "search",    # Search page
+        "filter",    # Filter page
+        "batch",     # Batch listing page
+        "directory", # Directory page
+        "about",     # About page
+        "jobs",      # Jobs page
+        "news",      # News page
+        "blog",      # Blog page
+        "apply",     # Apply page
+    }
+    
+    # Check if it's in the excluded list
+    if company_identifier.lower() in excluded_pages:
+        return False
+        
+    # Additional checks for patterns that aren't companies
+    if "/" in company_identifier:  # URLs with additional path segments are likely not companies
+        return False
+        
+    if company_identifier.startswith("?"):  # Query parameters
+        return False
+        
+    if len(company_identifier) < 2:  # Very short identifiers are suspicious
+        return False
+        
+    # If all checks pass, it's likely a valid company
+    return True
+
 def get_yc_2025_links(y_combinator_url, y_combinator_batch):
     """Get all company links from Y Combinator batch page with infinite scroll support"""
     logger.info(f"Fetching companies from: {y_combinator_batch}")
@@ -144,11 +195,24 @@ def get_yc_2025_links(y_combinator_url, y_combinator_batch):
         
         # Filter company links and build full URLs
         company_links = []
+        excluded_count = 0
+        
         for link in links:
             href = link.get("href", "")
-            if href.startswith("/companies/") and href != "/companies/":
+            
+            # Check if it's a valid company link
+            if is_valid_company_link(href, y_combinator_url):
                 full_url = y_combinator_url + href
                 company_links.append(full_url)
+            elif href.startswith("/companies/") and href != "/companies/":
+                # Log excluded links for debugging
+                company_identifier = href.replace("/companies/", "")
+                if excluded_count == 0:  # Only log the first few exclusions to avoid spam
+                    logger.info(f"Excluded non-company link: {company_identifier}")
+                excluded_count += 1
+        
+        if excluded_count > 0:
+            logger.info(f"Excluded {excluded_count} non-company links (like 'founders', search pages, etc.)")
         
         # Remove duplicates while preserving order
         unique_links = []

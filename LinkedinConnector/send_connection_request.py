@@ -70,8 +70,27 @@ def check_pending_connection(driver):
         required_classes = {"artdeco-button", "artdeco-button--2", "artdeco-button--secondary", "ember-view"}
         
         if required_classes.issubset(parent_classes):
-            log_info("⏳ Connection is in Pending state")
-            return True
+            # Now check the grandparent (2nd parent) for exclusion classes
+            try:
+                grandparent = parent_button.find_element(By.XPATH, "./..")
+                grandparent_classes = set(grandparent.get_attribute("class").split())
+                
+                # Exclusion classes that indicate this is NOT a true pending state
+                exclusion_classes = {"pv-action", "pv-action__padding"}
+                
+                # If grandparent has both exclusion classes, this is NOT a pending connection
+                if exclusion_classes.issubset(grandparent_classes):
+                    log_info("ℹ️ Pending button found but grandparent has pv-action classes - not a true pending state")
+                    return False
+                
+                # If grandparent doesn't have exclusion classes, it's a true pending state
+                log_info("⏳ Connection is in Pending state")
+                return True
+                
+            except NoSuchElementException:
+                # If we can't find grandparent, assume it's a valid pending state
+                log_info("⏳ Connection is in Pending state (no grandparent found)")
+                return True
             
     except TimeoutException:
         # No pending button found

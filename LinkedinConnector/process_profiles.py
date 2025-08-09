@@ -59,21 +59,26 @@ def get_user_input_for_range(total_records):
     logger.info(f"Will process {limit} connection requests")
     return limit
 
-def update_json_with_processed_status(json_file_path, processed_serials):
-    """Update JSON file to mark processed records with processed_data=True"""
+def update_json_with_connection_status(json_file_path, status_updates):
+    """Update JSON file with connection status for specific records
+    
+    Args:
+        json_file_path (str): Path to the JSON file
+        status_updates (dict): Dictionary mapping serial_number to connection_status
+                                e.g., {1: 'Connection Sent', 2: 'Failed to connect'}
+    """
     try:
         # Load current data
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # Update records that were processed
+        # Update records with new connection status
         updated_count = 0
         for record in data:
-            if record.get('serial_number') in processed_serials:
+            serial_number = record.get('serial_number')
+            if serial_number in status_updates:
+                record['connection_status'] = status_updates[serial_number]
                 record['processed_data'] = True
-                # Keep the old connection_status for backward compatibility
-                if 'connection_status' not in record:
-                    record['connection_status'] = 'sent'
                 updated_count += 1
         
         # Save updated data
@@ -81,10 +86,18 @@ def update_json_with_processed_status(json_file_path, processed_serials):
             json.dump(data, f, indent=2, ensure_ascii=False)
             
         log_blank_line()
-        logger.info(f"Updated {updated_count} records with processed_data=True")
+        logger.info(f"Updated {updated_count} records with connection status")
+        
+        # Log status summary
+        status_summary = {}
+        for status in status_updates.values():
+            status_summary[status] = status_summary.get(status, 0) + 1
+        
+        for status, count in status_summary.items():
+            logger.info(f"{status}: {count} records")
         
     except Exception as e:
-        logger.error(f"Error updating JSON file with processed status: {e}")
+        logger.error(f"Error updating JSON file with connection status: {e}")
 
 def get_next_unprocessed_records(data, limit):
     """Get the next batch of unprocessed records starting from the first False in processed_data"""
@@ -156,6 +169,12 @@ def show_processing_stats(data, json_file_path):
     processed_records = len([r for r in data if r.get('processed_data', False)])
     unprocessed_records = total_records - processed_records
     
+    # Connection status statistics
+    status_counts = {}
+    for record in data:
+        status = record.get('connection_status', 'Unknown')
+        status_counts[status] = status_counts.get(status, 0) + 1
+    
     # Find the first unprocessed record's serial number
     sorted_data = sorted(data, key=lambda x: x.get('serial_number', 0))
     first_unprocessed_serial = None
@@ -184,6 +203,12 @@ def show_processing_stats(data, json_file_path):
     logger.info(f"Unique companies: {unique_companies}")
     logger.info(f"Already processed: {processed_records}")
     logger.info(f"Remaining unprocessed: {unprocessed_records}")
+    
+    # Show connection status breakdown
+    logger.info("Connection Status Breakdown:")
+    for status, count in sorted(status_counts.items()):
+        logger.info(f"  {status}: {count}")
+    
     if first_unprocessed_serial:
         logger.info(f"Next processing will start from serial: {first_unprocessed_serial}")
     logger.info(f"Available for processing (from first False): {processable_records}")
@@ -249,8 +274,8 @@ def process_profiles_with_file(json_file_path):
         driver.quit()
         return
     
-    # Track processed records
-    processed_serials = []
+    # Track connection results
+    status_updates = {}  # serial_number -> connection_status
     successful_connections = 0
     
     # Process each profile
@@ -277,12 +302,11 @@ def process_profiles_with_file(json_file_path):
             
             if send_connection_request(driver):
                 successful_connections += 1
-                logger.info(f"Successfully connected with {founder_name}")
+                status_updates[serial_number] = "Connection Sent"
+                logger.info(f"Successfully sent connection request to {founder_name}")
             else:
-                logger.warning(f"Failed to connect with {founder_name}")
-            
-            # Track this record as processed (regardless of success/failure)
-            processed_serials.append(serial_number)
+                status_updates[serial_number] = "Failed to connect"
+                logger.warning(f"Failed to send connection requet to {founder_name}")
                 
             # Add delay to avoid rate limiting
             time.sleep(10 + delay_time)  # Randomize delay between 10-16 seconds
@@ -293,19 +317,19 @@ def process_profiles_with_file(json_file_path):
             break
         except Exception as e:
             logger.error(f"Error processing {founder_linkedin_url}: {e}")
-            processed_serials.append(serial_number)  # Mark as processed even if failed
+            status_updates[serial_number] = "Failed to connect"
             time.sleep(20)
     
-    # Update JSON file with processed status
-    if processed_serials:
-        update_json_with_processed_status(json_file_path, processed_serials)
+    # Update JSON file with connection status
+    if status_updates:
+        update_json_with_connection_status(json_file_path, status_updates)
     
     driver.quit()
     
     log_blank_line(2)
     logger.info(f"Done and dusted. Connection campaign completed!")
-    logger.info(f"Successfully sent {successful_connections} out of {len(processed_serials)} connection requests")
-    logger.info(f"Marked {len(processed_serials)} founders as processed (processed_data=True)")
+    logger.info(f"Successfully sent {successful_connections} out of {len(status_updates)} connection requests")
+    logger.info(f"Updated {len(status_updates)} founders with connection status")
     logger.info(f"Go and have some fun!")
 
 # Legacy function for backward compatibility (if needed)

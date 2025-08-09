@@ -214,19 +214,6 @@ def show_processing_stats(data, json_file_path):
         logger.info(f"Next processing will start from serial: {first_unprocessed_serial}")
     logger.info(f"Available for processing (from first False): {processable_records}")
 
-def get_status_emoji_and_message(status):
-    """Get appropriate emoji and message for each connection status"""
-    status_info = {
-        "Connection Sent": ("✅", "Successfully sent connection request"),
-        "Already Connected": ("🤝", "Already connected to this person"),
-        "Pending state": ("⏳", "Connection request is pending"),
-        "Email wanted": ("📧", "Email verification required for connection"),
-        "Doesn't want to connect": ("🚫", "Cannot connect - no connect button available"),
-        "Failed to connect": ("❌", "Failed to process connection request")
-    }
-    
-    return status_info.get(status, ("❓", "Unknown status"))
-
 def process_profiles_with_file(json_file_path):
     """Process profiles using a specific JSON file path"""
     load_dotenv()
@@ -316,12 +303,6 @@ def process_profiles_with_file(json_file_path):
             # Enhanced connection handling with detailed status
             success, status = send_connection_request(driver)
             
-            # Get emoji and message for status
-            emoji, message = get_status_emoji_and_message(status)
-            
-            # Log the result with appropriate emoji and message
-            logger.info(f"{emoji} {message} - {founder_name}")
-            
             # Track successful connections (only for "Connection Sent")
             if success and status == "Connection Sent":
                 successful_connections += 1
@@ -364,8 +345,7 @@ def process_profiles_with_file(json_file_path):
     
     logger.info(f"📈 Detailed Breakdown:")
     for status, count in sorted(final_status_counts.items()):
-        emoji, _ = get_status_emoji_and_message(status)
-        logger.info(f"   {emoji} {status}: {count}")
+        logger.info(f"   {status}: {count}")
     
     logger.info(f"🚀 Go and have some fun!")
 

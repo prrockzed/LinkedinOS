@@ -35,7 +35,7 @@ def check_already_connected(driver):
             # Check if aria-hidden is True (as mentioned in requirements)
             aria_hidden = remove_connection_element.get_attribute('aria-hidden')
             if aria_hidden == 'true' or remove_connection_element.is_displayed():
-                log_info("✅ Already connected to this person")
+                log_info("🔥 Already connected to this person")
                 # Click somewhere else to close the dropdown
                 driver.execute_script("document.body.click();")
                 time.sleep(0.5)
@@ -191,7 +191,7 @@ def find_connect_button(driver):
             log_info("⚠️ Connect button parent has excluded class (muted) - skipping")
             return None
             
-        log_info(f"✅ Valid Connect button found with classes: {parent_classes}")
+        log_info(f"✅ Valid Connect button found")
         return parent_button
             
     except NoSuchElementException:

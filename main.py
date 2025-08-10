@@ -40,25 +40,42 @@ def run_ycombinator_scraper():
         log_error(f"YCombinator scraper failed: {e}")
     log_blank_line()
 
+def run_linkedin_invitations_manager():
+    # Run the LinkedIn Invitations Manager script
+    log_info("Calling LinkedIn Invitations Manager")
+    try:
+        # Set PYTHONPATH to include current directory
+        env = os.environ.copy()
+        env['PYTHONPATH'] = os.getcwd()
+        
+        subprocess.run([sys.executable, "LinkedinInvitationsManager/main.py"], 
+                        check=True, env=env, cwd=os.getcwd())
+    except subprocess.CalledProcessError as e:
+        log_error(f"LinkedIn Invitations Manager failed: {e}")
+    log_blank_line()
+
 def show_menu():
     # Display the menu options
     log_info(1, "===== LinkedinOS Menu =====", 1)
     log_info("1. Run YCombinator Scraper")
     log_info("2. Run LinkedinConnector")
-    log_info("3. Exit (and set the code free)", 1)
+    log_info("3. Manage LinkedIn Invitations")
+    log_info("4. Exit (and set the code free)", 1)
 
 def main():
     log_info(1, "========== LinkedinOS ==========", 1)
     
     while True:
         show_menu()
-        choice = get_user_choice(3) # 3 choices in total
+        choice = get_user_choice(4) # 4 choices in total
         log_blank_line()
         
         if choice == "1":
             run_ycombinator_scraper()
         elif choice == "2":
             run_linkedin_connector()
+        elif choice == "3":
+            run_linkedin_invitations_manager()
         else:
             log_info("Exiting LinkedinOS...")
             log_info("Goodbye! 👋", 1)

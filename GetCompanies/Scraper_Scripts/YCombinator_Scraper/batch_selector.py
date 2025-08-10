@@ -18,8 +18,8 @@ class YCBatchSelector:
         
         # Define allowed seasons for each year
         self.year_seasons = {
-            2025: ["Winter", "Summer", "Fall"],
-            2024: ["Winter", "Spring", "Summer"],
+            2025: ["Winter", "Summer", "Spring"],
+            2024: ["Winter", "Fall", "Summer"],
             # For years 2023 down to 2006, only Summer and Winter
             **{year: ["Summer", "Winter"] for year in range(2023, 2005, -1)},
             # Special case for 2005 - only Summer

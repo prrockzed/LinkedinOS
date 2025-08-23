@@ -2,6 +2,7 @@ credentials.json
 .env
 test.py
 *chrome_profile
+*.DS_Store
 *__pycache__
 *YC_*_scraped.json
 todo.txt

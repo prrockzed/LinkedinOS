@@ -4,6 +4,7 @@ import random
 import logging
 import json
 from dotenv import load_dotenv
+from LinkedinConnector.time_delay import variable_delay_between_actions
 from tools.blank_logger import log_blank_line
 from setup_driver import setup_driver
 from login_to_linkedin import login_to_linkedin
@@ -311,11 +312,8 @@ def process_profiles_with_file(json_file_path):
             status_updates[serial_number] = status
                 
             # Add delay to avoid rate limiting
-            # Shorter delay for already connected/pending since no actual request was made
-            if status in ["Already Connected", "Pending state"]:
-                time.sleep(5 + delay_time//2)  # 5-8 seconds
-            else:
-                time.sleep(10 + delay_time)  # 10-16 seconds for actual connection attempts
+            delays = variable_delay_between_actions()
+            time.sleep(delays['page_load']())
         
         except KeyboardInterrupt:
             log_blank_line()
